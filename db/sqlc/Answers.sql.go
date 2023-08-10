@@ -62,6 +62,16 @@ func (q *Queries) DeleteAnswerByQuestionId(ctx context.Context, questionID int32
 	return err
 }
 
+const deleteAnswerByUserId = `-- name: DeleteAnswerByUserId :exec
+DELETE FROM "Answer"
+WHERE user_id= $1
+`
+
+func (q *Queries) DeleteAnswerByUserId(ctx context.Context, userID int32) error {
+	_, err := q.db.ExecContext(ctx, deleteAnswerByUserId, userID)
+	return err
+}
+
 const getAnswerByID = `-- name: GetAnswerByID :one
 SELECT id, user_id, question_id, content, created_at, updated_at FROM "Answer" WHERE id = $1
 `
@@ -146,8 +156,8 @@ func (q *Queries) GetAnswersByQuestionID(ctx context.Context, arg GetAnswersByQu
 
 const updateAnswersByQuestionID = `-- name: UpdateAnswersByQuestionID :one
 Update "Answer"
-Set content=$3 WHERE id = $1  AND 
-user_id=$2
+Set content=$3, updated_at = now() WHERE id = $1 AND 
+user_id=$2 
 RETURNING id, user_id, question_id, content, created_at, updated_at
 `
 

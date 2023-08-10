@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS User, Question, Answer;
+DROP TABLE IF EXISTS "User", "Question", "Answer";

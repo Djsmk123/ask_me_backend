@@ -14,6 +14,9 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteAnswerById(ctx context.Context, id int32) (Answer, error)
 	DeleteAnswerByQuestionId(ctx context.Context, questionID int32) error
+	DeleteAnswerByUserId(ctx context.Context, userID int32) error
+	DeleteQuestionByUserId(ctx context.Context, userID int32) error
+	DeleteUserById(ctx context.Context, id int32) (User, error)
 	GetAnswerByID(ctx context.Context, id int32) (Answer, error)
 	GetAnswerForUpdate(ctx context.Context, id int32) (Answer, error)
 	GetAnswersByQuestionID(ctx context.Context, arg GetAnswersByQuestionIDParams) ([]Answer, error)
@@ -25,6 +28,7 @@ type Querier interface {
 	QuestionDelete(ctx context.Context, id int32) (Question, error)
 	UpdateAnswersByQuestionID(ctx context.Context, arg UpdateAnswersByQuestionIDParams) (Answer, error)
 	UpdateQuestionById(ctx context.Context, arg UpdateQuestionByIdParams) (Question, error)
+	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)

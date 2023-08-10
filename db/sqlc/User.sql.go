@@ -11,23 +11,58 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO "User" (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email, password_hash, created_at, updated_at
+INSERT INTO "User" (username, email, password_hash,public_profile_image,private_profile_image,provider) VALUES ($1, $2, $3,$4,$5,$6) RETURNING id, username, email, provider, password_hash, public_profile_image, private_profile_image, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	Username     string         `json:"username"`
-	Email        string         `json:"email"`
-	PasswordHash sql.NullString `json:"password_hash"`
+	Username            string         `json:"username"`
+	Email               string         `json:"email"`
+	PasswordHash        sql.NullString `json:"password_hash"`
+	PublicProfileImage  string         `json:"public_profile_image"`
+	PrivateProfileImage string         `json:"private_profile_image"`
+	Provider            string         `json:"provider"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.Email, arg.PasswordHash)
+	row := q.db.QueryRowContext(ctx, createUser,
+		arg.Username,
+		arg.Email,
+		arg.PasswordHash,
+		arg.PublicProfileImage,
+		arg.PrivateProfileImage,
+		arg.Provider,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
 		&i.Email,
+		&i.Provider,
 		&i.PasswordHash,
+		&i.PublicProfileImage,
+		&i.PrivateProfileImage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteUserById = `-- name: DeleteUserById :one
+DELETE FROM "User" WHERE
+id=$1 RETURNING id, username, email, provider, password_hash, public_profile_image, private_profile_image, created_at, updated_at
+`
+
+func (q *Queries) DeleteUserById(ctx context.Context, id int32) (User, error) {
+	row := q.db.QueryRowContext(ctx, deleteUserById, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.Provider,
+		&i.PasswordHash,
+		&i.PublicProfileImage,
+		&i.PrivateProfileImage,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -35,7 +70,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, username, email, password_hash, created_at, updated_at FROM "User" WHERE email = $1
+SELECT id, username, email, provider, password_hash, public_profile_image, private_profile_image, created_at, updated_at FROM "User" WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -45,7 +80,10 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.ID,
 		&i.Username,
 		&i.Email,
+		&i.Provider,
 		&i.PasswordHash,
+		&i.PublicProfileImage,
+		&i.PrivateProfileImage,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -53,7 +91,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, email, password_hash, created_at, updated_at FROM "User" WHERE id = $1
+SELECT id, username, email, provider, password_hash, public_profile_image, private_profile_image, created_at, updated_at FROM "User" WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id int32) (User, error) {
@@ -63,7 +101,39 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (User, error) {
 		&i.ID,
 		&i.Username,
 		&i.Email,
+		&i.Provider,
 		&i.PasswordHash,
+		&i.PublicProfileImage,
+		&i.PrivateProfileImage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :one
+UPDATE "User"
+SET password_hash = $2, updated_at = now()
+WHERE id = $1
+RETURNING id, username, email, provider, password_hash, public_profile_image, private_profile_image, created_at, updated_at
+`
+
+type UpdateUserPasswordParams struct {
+	ID           int32          `json:"id"`
+	PasswordHash sql.NullString `json:"password_hash"`
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.Provider,
+		&i.PasswordHash,
+		&i.PublicProfileImage,
+		&i.PrivateProfileImage,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

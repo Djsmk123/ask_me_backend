@@ -13,8 +13,8 @@ SELECT * FROM "Answer" WHERE question_id = $1 and user_id=$4 ORDER BY created_at
 
 -- name: UpdateAnswersByQuestionID :one
 Update "Answer"
-Set content=$3 WHERE id = $1  AND 
-user_id=$2
+Set content=$3, updated_at = now() WHERE id = $1 AND 
+user_id=$2 
 RETURNING *;
 
 
@@ -25,3 +25,7 @@ WHERE id = $1 RETURNING *;
 -- name: DeleteAnswerByQuestionId :exec
 DELETE FROM "Answer" 
 WHERE question_id=$1;
+
+-- name: DeleteAnswerByUserId :exec
+DELETE FROM "Answer"
+WHERE user_id= $1;

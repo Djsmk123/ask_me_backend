@@ -37,10 +37,14 @@ func (server *Server) setupRouter() {
 	router := gin.Default()
 	router.GET("/", server.index)
 	v1 := router.Group("/api/v1")
+
 	authRoutesV1 := v1.Use(authMiddleware(server.tokenMaker))
 	v1.POST("/create-user", server.CreateUser)
 	v1.POST("/create-ano-user", server.CreateAnonymousUser)
 	v1.POST("/login-user", server.LoginUser)
+	v1.POST("/social-login", server.SocialLogin)
+
+	authRoutesV1.GET("/delete-user/", server.DeleteUser)
 
 	authRoutesV1.POST("/create-question", server.CreateQuestion)
 	authRoutesV1.POST("/update-question", server.UpdateQuestionById)

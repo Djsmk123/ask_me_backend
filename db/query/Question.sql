@@ -14,7 +14,9 @@ SELECT * FROM "Question" WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OF
 
 -- name: UpdateQuestionById :one
 Update "Question"
-Set content=$3 WHERE id = $1 and user_id= $2
+Set content=$3, updated_at = now()
+WHERE id = $1 and user_id= $2
+
 RETURNING *;
 
 
@@ -22,4 +24,8 @@ RETURNING *;
 DELETE FROM "Question"
 WHERE id = $1 
 RETURNING *;
+
+-- name: DeleteQuestionByUserId :exec
+DELETE FROM "Question"
+WHERE user_id= $1;
 

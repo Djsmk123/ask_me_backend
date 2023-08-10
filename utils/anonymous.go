@@ -2,7 +2,6 @@ package utils
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -13,14 +12,14 @@ import (
 func GenerateRandomUser() (*db.CreateUserParams, error) {
 	var params db.CreateUserParams
 	email := RandomEmail()
-	username, err := RandomUserName(email)
-	if err != nil {
-		return &params, err
-	}
+	username := RandomUserName(email)
 	params = db.CreateUserParams{
-		Username:     username,
-		Email:        email,
-		PasswordHash: sql.NullString{String: "", Valid: false},
+		Username:            username,
+		Email:               email,
+		PasswordHash:        sql.NullString{String: "", Valid: false},
+		PublicProfileImage:  RandomUserProfileImage(),
+		PrivateProfileImage: RandomUserProfileImage(),
+		Provider:            "Anonymous",
 	}
 
 	return &params, nil
@@ -59,10 +58,16 @@ func isAnonymousDomain(domain string) bool {
 	return false
 }
 
-func RandomUserName(email string) (string, error) {
+func RandomUserName(email string) string {
 	parts := strings.Split(email, "@")
 	if len(parts) > 0 {
-		return parts[0], nil
+		return parts[0]
 	}
-	return "", errors.New("invalid user name")
+	return ""
+}
+
+func RandomUserProfileImage() string {
+	imageIndex := rand.Intn(49) + 1
+	url := fmt.Sprintf("https://xsgames.co/randomusers/assets/avatars/pixel/%d.jpg", imageIndex)
+	return url
 }

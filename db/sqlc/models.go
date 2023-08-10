@@ -10,27 +10,30 @@ import (
 )
 
 type Answer struct {
-	ID         int32        `json:"id"`
-	UserID     int32        `json:"user_id"`
-	QuestionID int32        `json:"question_id"`
-	Content    string       `json:"content"`
-	CreatedAt  sql.NullTime `json:"created_at"`
-	UpdatedAt  time.Time    `json:"updated_at"`
+	ID         int32     `json:"id"`
+	UserID     int32     `json:"user_id"`
+	QuestionID int32     `json:"question_id"`
+	Content    string    `json:"content"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type Question struct {
-	ID        int32        `json:"id"`
-	UserID    int32        `json:"user_id"`
-	Content   string       `json:"content"`
-	CreatedAt sql.NullTime `json:"created_at"`
-	UpdatedAt time.Time    `json:"updated_at"`
+	ID        int32     `json:"id"`
+	UserID    int32     `json:"user_id"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type User struct {
-	ID           int32          `json:"id"`
-	Username     string         `json:"username"`
-	Email        string         `json:"email"`
-	PasswordHash sql.NullString `json:"password_hash"`
-	CreatedAt    sql.NullTime   `json:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at"`
+	ID                  int32          `json:"id"`
+	Username            string         `json:"username"`
+	Email               string         `json:"email"`
+	Provider            string         `json:"provider"`
+	PasswordHash        sql.NullString `json:"password_hash"`
+	PublicProfileImage  string         `json:"public_profile_image"`
+	PrivateProfileImage string         `json:"private_profile_image"`
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
 }
