@@ -9,16 +9,6 @@ import (
 	"context"
 )
 
-const answerDelete = `-- name: AnswerDelete :exec
-DELETE FROM "Answer"
-WHERE id = $1
-`
-
-func (q *Queries) AnswerDelete(ctx context.Context, id int32) error {
-	_, err := q.db.ExecContext(ctx, answerDelete, id)
-	return err
-}
-
 const createAnswer = `-- name: CreateAnswer :one
 INSERT INTO "Answer" (user_id, question_id, content) VALUES ($1, $2, $3) RETURNING id, user_id, question_id, content, created_at, updated_at
 `
@@ -43,9 +33,27 @@ func (q *Queries) CreateAnswer(ctx context.Context, arg CreateAnswerParams) (Ans
 	return i, err
 }
 
-const deleteAnswerByQuestionId = `-- name: DeleteAnswerByQuestionId :exec
-
+const deleteAnswerById = `-- name: DeleteAnswerById :one
 DELETE FROM "Answer"
+WHERE id = $1 RETURNING id, user_id, question_id, content, created_at, updated_at
+`
+
+func (q *Queries) DeleteAnswerById(ctx context.Context, id int32) (Answer, error) {
+	row := q.db.QueryRowContext(ctx, deleteAnswerById, id)
+	var i Answer
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.QuestionID,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteAnswerByQuestionId = `-- name: DeleteAnswerByQuestionId :exec
+DELETE FROM "Answer" 
 WHERE question_id=$1
 `
 
@@ -91,17 +99,23 @@ func (q *Queries) GetAnswerForUpdate(ctx context.Context, id int32) (Answer, err
 }
 
 const getAnswersByQuestionID = `-- name: GetAnswersByQuestionID :many
-SELECT id, user_id, question_id, content, created_at, updated_at FROM "Answer" WHERE question_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3
+SELECT id, user_id, question_id, content, created_at, updated_at FROM "Answer" WHERE question_id = $1 and user_id=$4 ORDER BY created_at DESC LIMIT $2 OFFSET $3
 `
 
 type GetAnswersByQuestionIDParams struct {
 	QuestionID int32 `json:"question_id"`
 	Limit      int32 `json:"limit"`
 	Offset     int32 `json:"offset"`
+	UserID     int32 `json:"user_id"`
 }
 
 func (q *Queries) GetAnswersByQuestionID(ctx context.Context, arg GetAnswersByQuestionIDParams) ([]Answer, error) {
-	rows, err := q.db.QueryContext(ctx, getAnswersByQuestionID, arg.QuestionID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, getAnswersByQuestionID,
+		arg.QuestionID,
+		arg.Limit,
+		arg.Offset,
+		arg.UserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -132,17 +146,19 @@ func (q *Queries) GetAnswersByQuestionID(ctx context.Context, arg GetAnswersByQu
 
 const updateAnswersByQuestionID = `-- name: UpdateAnswersByQuestionID :one
 Update "Answer"
-Set content=$2 WHERE id = $1 
+Set content=$3 WHERE id = $1  AND 
+user_id=$2
 RETURNING id, user_id, question_id, content, created_at, updated_at
 `
 
 type UpdateAnswersByQuestionIDParams struct {
 	ID      int32  `json:"id"`
+	UserID  int32  `json:"user_id"`
 	Content string `json:"content"`
 }
 
 func (q *Queries) UpdateAnswersByQuestionID(ctx context.Context, arg UpdateAnswersByQuestionIDParams) (Answer, error) {
-	row := q.db.QueryRowContext(ctx, updateAnswersByQuestionID, arg.ID, arg.Content)
+	row := q.db.QueryRowContext(ctx, updateAnswersByQuestionID, arg.ID, arg.UserID, arg.Content)
 	var i Answer
 	err := row.Scan(
 		&i.ID,

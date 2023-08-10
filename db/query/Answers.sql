@@ -8,20 +8,20 @@ SELECT * FROM "Answer" WHERE id = $1;
 SELECT * FROM "Answer" WHERE id = $1 LIMIT 1 For No Key Update;
 
 -- name: GetAnswersByQuestionID :many
-SELECT * FROM "Answer" WHERE question_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;
+SELECT * FROM "Answer" WHERE question_id = $1 and user_id=$4 ORDER BY created_at DESC LIMIT $2 OFFSET $3;
 
 
 -- name: UpdateAnswersByQuestionID :one
 Update "Answer"
-Set content=$2 WHERE id = $1 
+Set content=$3 WHERE id = $1  AND 
+user_id=$2
 RETURNING *;
 
 
--- name: AnswerDelete :exec
+-- name: DeleteAnswerById :one
 DELETE FROM "Answer"
-WHERE id = $1;
+WHERE id = $1 RETURNING *;
 
 -- name: DeleteAnswerByQuestionId :exec
-
-DELETE FROM "Answer"
+DELETE FROM "Answer" 
 WHERE question_id=$1;

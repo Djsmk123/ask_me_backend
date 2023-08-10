@@ -104,14 +104,23 @@ func (q *Queries) GetQuestionsByUserID(ctx context.Context, arg GetQuestionsByUs
 	return items, nil
 }
 
-const questionDelete = `-- name: QuestionDelete :exec
+const questionDelete = `-- name: QuestionDelete :one
 DELETE FROM "Question"
-WHERE id = $1
+WHERE id = $1 
+RETURNING id, user_id, content, created_at, updated_at
 `
 
-func (q *Queries) QuestionDelete(ctx context.Context, id int32) error {
-	_, err := q.db.ExecContext(ctx, questionDelete, id)
-	return err
+func (q *Queries) QuestionDelete(ctx context.Context, id int32) (Question, error) {
+	row := q.db.QueryRowContext(ctx, questionDelete, id)
+	var i Question
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateQuestionById = `-- name: UpdateQuestionById :one

@@ -41,11 +41,18 @@ func (server *Server) setupRouter() {
 	v1.POST("/create-user", server.CreateUser)
 	v1.POST("/create-ano-user", server.CreateAnonymousUser)
 	v1.POST("/login-user", server.LoginUser)
+
 	authRoutesV1.POST("/create-question", server.CreateQuestion)
 	authRoutesV1.POST("/update-question", server.UpdateQuestionById)
 	authRoutesV1.GET("/delete-question/:id", server.DeleteQuestionById)
 	authRoutesV1.GET("/questions", server.ListQuestion)
 	authRoutesV1.GET("/question/:id", server.GetQuestionByID)
+
+	authRoutesV1.POST("/create-answer", server.CreateAnswer)
+	authRoutesV1.POST("/update-answer", server.UpdateAnswerById)
+	authRoutesV1.GET("/delete-answer/:id", server.DeleteAnswerById)
+	authRoutesV1.GET("/answers", server.ListAnswers)
+	authRoutesV1.GET("/answer/:id", server.GetAnswerByID)
 
 	server.router = router
 

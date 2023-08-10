@@ -33,6 +33,7 @@ func (server *Server) CreateQuestion(ctx *gin.Context) {
 	}
 
 	question, err := server.store.CreateQuestion(ctx, arg)
+
 	if err != nil {
 		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
@@ -55,17 +56,25 @@ func (server *Server) DeleteQuestionById(ctx *gin.Context) {
 		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	err := server.store.QuestionDelete(ctx, int32(req.ID))
+	err := server.store.DeleteAnswerByQuestionId(ctx, int32(req.ID))
 
 	if err != nil {
-		if err == sql.ErrNoRows || err.Error() == "no rows in result set" {
+		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	question, err := server.store.QuestionDelete(ctx, int32(req.ID))
+
+	if err != nil {
+		if err == sql.ErrNoRows {
 			ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
 			return
 		}
 		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	ResponseHandlerJson(ctx, http.StatusOK, nil, req)
+
+	ResponseHandlerJson(ctx, http.StatusOK, nil, question)
 
 }
 
@@ -83,17 +92,16 @@ func (server *Server) UpdateQuestionById(ctx *gin.Context) {
 		Content: req.Question,
 		UserID:  int32(userId),
 	}
-
 	question, err := server.store.UpdateQuestionById(ctx, arg)
-
 	if err != nil {
-		if err == sql.ErrNoRows || err.Error() == "no rows in result set" {
+		if err == sql.ErrNoRows {
 			ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
 			return
 		}
 		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
+
 	ResponseHandlerJson(ctx, http.StatusOK, nil, question)
 
 }
@@ -112,7 +120,7 @@ func (server *Server) GetQuestionByID(ctx *gin.Context) {
 	question, err := server.store.GetQuestionByID(ctx, int32(req.ID))
 
 	if err != nil {
-		if err == sql.ErrNoRows || err.Error() == "no rows in result set" {
+		if err == sql.ErrNoRows {
 			ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
 			return
 		}
@@ -148,6 +156,6 @@ func (server *Server) ListQuestion(ctx *gin.Context) {
 		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	ctx.JSON(http.StatusOK, questions)
+	ResponseHandlerJson(ctx, http.StatusOK, nil, questions)
 
 }

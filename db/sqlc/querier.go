@@ -9,10 +9,10 @@ import (
 )
 
 type Querier interface {
-	AnswerDelete(ctx context.Context, id int32) error
 	CreateAnswer(ctx context.Context, arg CreateAnswerParams) (Answer, error)
 	CreateQuestion(ctx context.Context, arg CreateQuestionParams) (Question, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteAnswerById(ctx context.Context, id int32) (Answer, error)
 	DeleteAnswerByQuestionId(ctx context.Context, questionID int32) error
 	GetAnswerByID(ctx context.Context, id int32) (Answer, error)
 	GetAnswerForUpdate(ctx context.Context, id int32) (Answer, error)
@@ -22,7 +22,7 @@ type Querier interface {
 	GetQuestionsByUserID(ctx context.Context, arg GetQuestionsByUserIDParams) ([]Question, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
-	QuestionDelete(ctx context.Context, id int32) error
+	QuestionDelete(ctx context.Context, id int32) (Question, error)
 	UpdateAnswersByQuestionID(ctx context.Context, arg UpdateAnswersByQuestionIDParams) (Answer, error)
 	UpdateQuestionById(ctx context.Context, arg UpdateQuestionByIdParams) (Question, error)
 }

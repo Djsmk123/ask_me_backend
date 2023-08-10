@@ -34,6 +34,9 @@ mock:
 sqlcgen:
 	docker run --rm -v "%cd%:/src" -w /src kjconroy/sqlc generate	
 
+live: 
+	gin -i run main.go
+
 run:
 	go run main.go
 
