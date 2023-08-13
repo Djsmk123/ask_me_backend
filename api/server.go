@@ -2,8 +2,10 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 
 	db "github.com/djsmk123/askmeapi/db/sqlc"
+	passwordreset "github.com/djsmk123/askmeapi/token/password-reset"
 	"github.com/djsmk123/askmeapi/utils"
 	"github.com/gin-gonic/gin"
 
@@ -11,22 +13,25 @@ import (
 )
 
 type Server struct {
-	config     utils.Config
-	store      db.DBExec
-	router     *gin.Engine
-	tokenMaker token.Maker
+	config        utils.Config
+	store         db.DBExec
+	router        *gin.Engine
+	tokenMaker    token.Maker
+	passwordReset passwordreset.PasswordPayloadMaker
 }
 
 func NewServer(config utils.Config, store db.DBExec) (*Server, error) {
 	tokenMaker, err := token.NewJwtMaker(config.TokkenStructureKey)
+	passwordResetMaker := passwordreset.NewPassWordResetMaker(config.TokkenStructureKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker: %w", err)
 	}
 
 	server := &Server{
-		config:     config,
-		store:      store,
-		tokenMaker: tokenMaker,
+		config:        config,
+		store:         store,
+		tokenMaker:    tokenMaker,
+		passwordReset: passwordResetMaker,
 	}
 
 	server.setupRouter()
@@ -35,14 +40,24 @@ func NewServer(config utils.Config, store db.DBExec) (*Server, error) {
 }
 func (server *Server) setupRouter() {
 	router := gin.Default()
-	router.GET("/", server.index)
+	router.LoadHTMLFiles("static/password_reset.html")
+
+	router.GET("/reset-password-page", func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "password_reset.html", nil)
+	})
+
+	router.PATCH("/resetpassword", server.resetPaswordVerify)
+	router.UseRawPath = true
+	router.UnescapePathValues = false
 	v1 := router.Group("/api/v1")
 
 	authRoutesV1 := v1.Use(authMiddleware(server.tokenMaker))
 	v1.POST("/create-user", server.CreateUser)
+
 	v1.POST("/create-ano-user", server.CreateAnonymousUser)
 	v1.POST("/login-user", server.LoginUser)
 	v1.POST("/social-login", server.SocialLogin)
+	v1.POST("/request-password", server.PasswordResetRequest)
 
 	authRoutesV1.GET("/delete-user/", server.DeleteUser)
 

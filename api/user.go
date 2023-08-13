@@ -2,9 +2,10 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
-
 	"net/http"
+	"net/url"
 	"time"
 
 	db "github.com/djsmk123/askmeapi/db/sqlc"
@@ -258,15 +259,97 @@ func (server *Server) DeleteUser(ctx *gin.Context) {
 }
 
 type PasswordResetRequest struct {
-	Email string `json:"email" "binding:required,email"`
+	Email string `json:"email" binding:"required,email"`
 }
 
-func (server *Server) PasswordReset(ctx *gin.Context) {
+func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 	var req PasswordResetRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	ResponseHandlerJson(ctx, http.StatusOK, nil, gin.H{})
 
+	//find user by email to check if user exists or not
+
+	user, err := server.store.GetUserByEmail(ctx, req.Email)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			ResponseHandlerJson(ctx, http.StatusNotFound, errUserNotExist, nil)
+			return
+		}
+		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+	resetToken, err := server.passwordReset.CreateToken(int64(user.ID), 10*time.Minute)
+	if err != nil {
+		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+	encryptedUrl := url.QueryEscape(resetToken)
+	emailData := utils.EmailData{
+		URL:       "http://" + server.config.ServerAddress + "/reset-password-page?token=" + encryptedUrl,
+		FirstName: user.Email,
+		Subject:   "Your password reset token (valid for 10min)",
+	}
+
+	err = utils.SendEmail(user.Email, &server.config, &emailData, "resetPassword.html")
+	if err != nil {
+		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+	ResponseHandlerJson(ctx, http.StatusOK, nil, gin.H{
+		"message":  "Email has been sent successfully",
+		"response": emailData,
+	})
+
+}
+
+type ResetPasswordInput struct {
+	Password string `json:"password" binding:"required"`
+}
+
+func (server *Server) resetPaswordVerify(ctx *gin.Context) {
+	var req ResetPasswordInput
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+	token, exists := ctx.GetQuery("token")
+
+	if !exists && token != "" {
+		ResponseHandlerJson(ctx, http.StatusInternalServerError, errors.New("invalid url"), nil)
+		return
+	}
+
+	payload, err := server.passwordReset.VerifyToken(token)
+	if err != nil {
+		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+	err = payload.Valid()
+	if err != nil {
+		ResponseHandlerJson(ctx, http.StatusUnauthorized, err, nil)
+		return
+	}
+	newPasswordHash, err := utils.HashPassword(req.Password)
+	if err != nil {
+		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	user, err := server.store.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+		ID: int32(payload.Id),
+		PasswordHash: sql.NullString{
+			String: newPasswordHash,
+			Valid:  true,
+		},
+	})
+	if err != nil || user.ID < 0 {
+		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	ctx.SetCookie("token", "", -1, "/", "localhost", false, true)
+	ResponseHandlerJson(ctx, http.StatusOK, nil, gin.H{"status": "success", "message": "Password data updated successfully"})
 }
