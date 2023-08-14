@@ -8,7 +8,14 @@ SELECT * FROM "Answer" WHERE id = $1;
 SELECT * FROM "Answer" WHERE id = $1 LIMIT 1 For No Key Update;
 
 -- name: GetAnswersByQuestionID :many
-SELECT * FROM "Answer" WHERE question_id = $1 and user_id=$4 ORDER BY created_at DESC LIMIT $2 OFFSET $3;
+SELECT *
+FROM "Answer"
+WHERE "user_id" = $1
+AND ("content" ILike sqlc.narg('content') OR sqlc.narg('content') IS NULL)
+And "question_id" = $2
+ORDER BY "created_at" DESC
+LIMIT $3
+OFFSET $4;
 
 
 -- name: UpdateAnswersByQuestionID :one
@@ -29,3 +36,4 @@ WHERE question_id=$1;
 -- name: DeleteAnswerByUserId :exec
 DELETE FROM "Answer"
 WHERE user_id= $1;
+

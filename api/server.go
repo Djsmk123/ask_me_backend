@@ -40,7 +40,10 @@ func NewServer(config utils.Config, store db.DBExec) (*Server, error) {
 }
 func (server *Server) setupRouter() {
 	router := gin.Default()
-	router.LoadHTMLFiles("static/password_reset.html")
+	router.LoadHTMLGlob("static/*.html")
+	router.GET("/", func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "index.html", nil)
+	})
 
 	router.GET("/reset-password-page", func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "password_reset.html", nil)

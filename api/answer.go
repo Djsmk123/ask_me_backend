@@ -127,9 +127,10 @@ func (server *Server) GetAnswerByID(ctx *gin.Context) {
 }
 
 type ListAnswerRequest struct {
-	PageId     int32 `form:"page_id" binding:"required,min=1"`
-	PageSize   int32 `form:"page_size" binding:"required,min=5,max=10"`
-	QuestionID int32 `form:"question_id" binding:"required,min=1"`
+	PageId     int32  `form:"page_id" binding:"required,min=1"`
+	PageSize   int32  `form:"page_size" binding:"required,min=5,max=10"`
+	QuestionID int32  `form:"question_id" binding:"required,min=1"`
+	Search     string `form:"search"`
 }
 
 func (server *Server) ListAnswers(ctx *gin.Context) {
@@ -140,11 +141,20 @@ func (server *Server) ListAnswers(ctx *gin.Context) {
 	}
 
 	authPayload := ctx.MustGet(autherizationPayloadKey).(*token.Payload)
+	search := req.Search
+
+	if len(req.Search) > 0 {
+		search = "%" + search + "%"
+	}
 	arg := db.GetAnswersByQuestionIDParams{
 		QuestionID: req.QuestionID,
 		UserID:     int32(authPayload.ID),
 		Limit:      req.PageSize,
 		Offset:     (req.PageId - 1) * req.PageSize,
+		Content: sql.NullString{
+			String: search,
+			Valid:  len(req.Search) > 0,
+		},
 	}
 
 	questions, err := server.store.GetAnswersByQuestionID(ctx, arg)
@@ -156,19 +166,3 @@ func (server *Server) ListAnswers(ctx *gin.Context) {
 	ResponseHandlerJson(ctx, http.StatusOK, nil, questions)
 
 }
-
-/*func (server *Server) fetchUserObject(ctx *gin.Context, id int64) *UserResponseType {
-	user, err := server.store.GetUserByID(ctx, int32(id))
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
-			return nil
-		}
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
-		return nil
-	}
-	resp := GetUserResponse(user)
-	return &resp
-
-}*/

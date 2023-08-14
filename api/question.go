@@ -132,8 +132,9 @@ func (server *Server) GetQuestionByID(ctx *gin.Context) {
 }
 
 type ListQuestionRequest struct {
-	PageId   int32 `form:"page_id" binding:"required,min=1"`
-	PageSize int32 `form:"page_size" binding:"required,min=5,max=10"`
+	PageId   int32  `form:"page_id" binding:"required,min=1"`
+	PageSize int32  `form:"page_size" binding:"required,min=5,max=10"`
+	Search   string `form:"search"`
 }
 
 func (server *Server) ListQuestion(ctx *gin.Context) {
@@ -142,12 +143,20 @@ func (server *Server) ListQuestion(ctx *gin.Context) {
 		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
+	search := req.Search
 
+	if len(search) > 0 {
+		search = "%" + search + "%"
+	}
 	authPayload := ctx.MustGet(autherizationPayloadKey).(*token.Payload)
 	arg := db.GetQuestionsByUserIDParams{
 		UserID: int32(authPayload.ID),
 		Limit:  req.PageSize,
 		Offset: (req.PageId - 1) * req.PageSize,
+		Content: sql.NullString{
+			String: search,
+			Valid:  len(req.Search) > 0,
+		},
 	}
 
 	questions, err := server.store.GetQuestionsByUserID(ctx, arg)

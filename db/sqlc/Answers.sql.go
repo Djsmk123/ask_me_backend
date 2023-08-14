@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createAnswer = `-- name: CreateAnswer :one
@@ -109,22 +110,31 @@ func (q *Queries) GetAnswerForUpdate(ctx context.Context, id int32) (Answer, err
 }
 
 const getAnswersByQuestionID = `-- name: GetAnswersByQuestionID :many
-SELECT id, user_id, question_id, content, created_at, updated_at FROM "Answer" WHERE question_id = $1 and user_id=$4 ORDER BY created_at DESC LIMIT $2 OFFSET $3
+SELECT id, user_id, question_id, content, created_at, updated_at
+FROM "Answer"
+WHERE "user_id" = $1
+AND ("content" ILike $5 OR $5 IS NULL)
+And "question_id" = $2
+ORDER BY "created_at" DESC
+LIMIT $3
+OFFSET $4
 `
 
 type GetAnswersByQuestionIDParams struct {
-	QuestionID int32 `json:"question_id"`
-	Limit      int32 `json:"limit"`
-	Offset     int32 `json:"offset"`
-	UserID     int32 `json:"user_id"`
+	UserID     int32          `json:"user_id"`
+	QuestionID int32          `json:"question_id"`
+	Limit      int32          `json:"limit"`
+	Offset     int32          `json:"offset"`
+	Content    sql.NullString `json:"content"`
 }
 
 func (q *Queries) GetAnswersByQuestionID(ctx context.Context, arg GetAnswersByQuestionIDParams) ([]Answer, error) {
 	rows, err := q.db.QueryContext(ctx, getAnswersByQuestionID,
+		arg.UserID,
 		arg.QuestionID,
 		arg.Limit,
 		arg.Offset,
-		arg.UserID,
+		arg.Content,
 	)
 	if err != nil {
 		return nil, err
