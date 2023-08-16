@@ -15,7 +15,7 @@ COPY wait.sh .
 COPY app.env .
 COPY start.sh .
 
-COPY /db/migration ./migration
+COPY ./app/db/migration ./migration
 
 
 EXPOSE 8080
