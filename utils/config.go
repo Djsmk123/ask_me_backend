@@ -18,6 +18,7 @@ type Config struct {
 	SMTPPass  string `mapstructure:"SMTP_PASS"`
 	SMTPPort  int    `mapstructure:"SMTP_PORT"`
 	SMTPUser  string `mapstructure:"SMTP_USER"`
+	GINMODE   string `mapstructure:"GIN_MODE"`
 }
 
 func LoadConfiguration(path string) (config Config, err error) {

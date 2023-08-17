@@ -40,6 +40,9 @@ func NewServer(config utils.Config, store db.DBExec) (*Server, error) {
 }
 func (server *Server) setupRouter() {
 	router := gin.Default()
+	if server.config.GINMODE == gin.ReleaseMode {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	router.LoadHTMLGlob("static/*.html")
 	router.GET("/", func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "index.html", nil)
