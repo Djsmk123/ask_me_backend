@@ -24,7 +24,7 @@ func main() {
 		log.Fatal("Cannot connect to database", err)
 	}
 	//run migation
-	runDbMigrations(config.MIGRATIONURL, config.DBSource)
+	//runDbMigrations(config.MIGRATIONURL, config.DBSource)
 	store := db.NewDBSQLExec(conn)
 
 	server, err := api.NewServer(config, store)
