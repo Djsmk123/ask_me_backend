@@ -42,9 +42,11 @@ func runDbMigrations(migrationUrl string, dbSource string) {
 	migration, err := migrate.New(migrationUrl, dbSource)
 	if (err) != nil {
 		log.Fatal("cannot create migration", err)
+		return
 	}
 	if err = migration.Up(); err != nil && err != migrate.ErrNoChange {
 		log.Fatal("failed to migrate up", err)
+		return
 	}
 	log.Println("db migration succeeded")
 }
