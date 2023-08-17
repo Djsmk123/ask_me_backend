@@ -64,6 +64,7 @@ func (server *Server) setupRouter() {
 	v1.POST("/login-user", server.LoginUser)
 	v1.POST("/social-login", server.SocialLogin)
 	v1.POST("/request-password", server.PasswordResetRequest)
+	v1.GET("/testing-endpoint", server.testing)
 
 	authRoutesV1.GET("/delete-user/", server.DeleteUser)
 
