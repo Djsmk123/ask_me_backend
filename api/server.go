@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 
 	db "github.com/djsmk123/askmeapi/db/sqlc"
 	passwordreset "github.com/djsmk123/askmeapi/token/password-reset"
@@ -39,14 +40,14 @@ func NewServer(config utils.Config, store db.DBExec) (*Server, error) {
 }
 func (server *Server) setupRouter() {
 	router := gin.Default()
-	/*router.LoadHTMLGlob("static/*.html")
+	router.LoadHTMLGlob("static/*.html")
 	router.GET("/", func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "index.html", nil)
 	})
 
 	router.GET("/reset-password-page", func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "password_reset.html", nil)
-	})*/
+	})
 
 	router.PATCH("/resetpassword", server.resetPaswordVerify)
 	router.UseRawPath = true
