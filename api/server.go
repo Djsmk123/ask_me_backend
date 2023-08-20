@@ -52,7 +52,7 @@ func (server *Server) setupRouter() {
 		ctx.HTML(http.StatusOK, "password_reset.html", nil)
 	})
 
-	router.PATCH("/resetpassword", server.resetPaswordVerify)
+	router.PATCH("/resetpassword", server.ResetPaswordVerify)
 	router.UseRawPath = true
 	router.UnescapePathValues = false
 	v1 := router.Group("/api/v1")

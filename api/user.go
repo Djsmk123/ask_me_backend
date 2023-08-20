@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	responsehandler "github.com/djsmk123/askmeapi/api/response_handler"
@@ -209,6 +210,16 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
+
+	//check if user is not anonymous or password based
+
+	provider := strings.ToLower(user.Provider)
+
+	if provider != "anonymous" && provider != "password" {
+		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, errors.New("invalid resource request"), nil)
+		return
+	}
+
 	server.CreateUserObjectForAuth(user, ctx)
 }
 
@@ -314,11 +325,8 @@ func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 type ResetPasswordInput struct {
 	Password string `json:"password" binding:"required"`
 }
-type ResetPasswordQuery struct {
-	Token string `json:"token" binding:"required"`
-}
 
-func (server *Server) resetPaswordVerify(ctx *gin.Context) {
+func (server *Server) ResetPaswordVerify(ctx *gin.Context) {
 	var req ResetPasswordInput
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
