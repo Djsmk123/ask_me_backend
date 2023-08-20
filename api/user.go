@@ -236,6 +236,17 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 	server.CreateUserObjectForAuth(user, ctx)
 }
 
+func (server *Server) GetUser(ctx *gin.Context) {
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	user, err := server.store.GetUserByID(ctx, int32(authPayload.ID))
+
+	if (err) != nil {
+		UserErrorHandler(ctx, err)
+		return
+	}
+	server.CreateUserObjectForAuth(user, ctx)
+
+}
 func (server *Server) DeleteUser(ctx *gin.Context) {
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 
@@ -245,18 +256,21 @@ func (server *Server) DeleteUser(ctx *gin.Context) {
 	server.store.DeleteQuestionByUserId(ctx, int32(authPayload.ID))
 
 	user, err := server.store.DeleteUserById(ctx, int32(authPayload.ID))
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
-			return
-		}
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+	if (err) != nil {
+		UserErrorHandler(ctx, err)
 		return
 	}
 
 	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, user)
 
+}
+
+func UserErrorHandler(ctx *gin.Context, err error) {
+	if err == sql.ErrNoRows {
+		responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errUserNotExist, nil)
+		return
+	}
+	responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 }
 
 type PasswordResetRequest struct {
