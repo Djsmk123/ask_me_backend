@@ -3,7 +3,6 @@ package api
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -63,17 +62,8 @@ func (server *Server) CreateAnonymousUser(ctx *gin.Context) {
 
 	user, err := server.store.CreateUser(ctx, arg)
 
-	if err != nil {
-		if pqErr, ok := err.(*pq.Error); ok {
-			switch pqErr.Code.Name() {
-			case "unique_violation", "unique_key_voilation":
-				responsehandler.ResponseHandlerJson(ctx, http.StatusForbidden, errUserAlreadyExist, nil)
-				return
-			}
-
-		}
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
-
+	if (err) != nil {
+		UserErrorHandler(ctx, err)
 		return
 	}
 	accesstoken, err := server.tokenMaker.CreateToken(int64(user.ID), user.Username, server.config.AccessTokenDuration)
@@ -121,17 +111,8 @@ func (server *Server) CreateUser(ctx *gin.Context) {
 
 	user, err := server.store.CreateUser(ctx, arg)
 
-	if err != nil {
-		if pqErr, ok := err.(*pq.Error); ok {
-			switch pqErr.Code.Name() {
-			case "unique_violation", "unique_key_voilation":
-				responsehandler.ResponseHandlerJson(ctx, http.StatusForbidden, errUserAlreadyExist, nil)
-				return
-			}
-
-		}
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
-
+	if (err) != nil {
+		UserErrorHandler(ctx, err)
 		return
 	}
 	accesstoken, err := server.tokenMaker.CreateToken(int64(user.ID), user.Username, server.config.AccessTokenDuration)
@@ -162,13 +143,8 @@ func (server *Server) LoginUser(ctx *gin.Context) {
 	}
 
 	user, err := server.store.GetUserByEmail(ctx, req.Email)
-	if err != nil {
-		fmt.Println("Error getting user", err == sql.ErrNoRows)
-		if err == sql.ErrNoRows || err.Error() == "no rows in result set" {
-			responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errUserNotExist, nil)
-			return
-		}
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+	if (err) != nil {
+		UserErrorHandler(ctx, err)
 		return
 	}
 	err = utils.CheckPassword(req.Password, user.PasswordHash.String)
@@ -255,13 +231,13 @@ func (server *Server) DeleteUser(ctx *gin.Context) {
 
 	server.store.DeleteQuestionByUserId(ctx, int32(authPayload.ID))
 
-	user, err := server.store.DeleteUserById(ctx, int32(authPayload.ID))
+	_, err := server.store.DeleteUserById(ctx, int32(authPayload.ID))
 	if (err) != nil {
 		UserErrorHandler(ctx, err)
 		return
 	}
 
-	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, user)
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, "delete-successfully")
 
 }
 
@@ -269,6 +245,13 @@ func UserErrorHandler(ctx *gin.Context, err error) {
 	if err == sql.ErrNoRows {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errUserNotExist, nil)
 		return
+	}
+	if pqErr, ok := err.(*pq.Error); ok {
+		switch pqErr.Code.Name() {
+		case "unique_violation", "unique_key_voilation":
+			responsehandler.ResponseHandlerJson(ctx, http.StatusForbidden, errUserAlreadyExist, nil)
+			return
+		}
 	}
 	responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 }
@@ -288,12 +271,8 @@ func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 
 	user, err := server.store.GetUserByEmail(ctx, req.Email)
 
-	if err != nil {
-		if err == sql.ErrNoRows {
-			responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errUserNotExist, nil)
-			return
-		}
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+	if (err) != nil {
+		UserErrorHandler(ctx, err)
 		return
 	}
 	resetToken, err := server.passwordReset.CreateToken(int64(user.ID), 10*time.Minute)
