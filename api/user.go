@@ -294,7 +294,7 @@ func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 	}
 	encryptedUrl := url.QueryEscape(resetToken)
 	emailData := utils.EmailData{
-		URL:       server.config.ServerAddress + "/reset-password-page?token=" + encryptedUrl,
+		URL:       server.config.BaseUrl + "reset-password-page?token=" + encryptedUrl,
 		FirstName: user.Email,
 		Subject:   "Your password reset token (valid for 10min)",
 	}

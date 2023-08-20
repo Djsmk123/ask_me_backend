@@ -14,6 +14,8 @@ type Config struct {
 	TokkenStructureKey  string        `mapstructure:"TOKEN_SYMMETRIC_KEY"`
 	AccessTokenDuration time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
 
+	BaseUrl string `mapstructure:"base_url"`
+
 	EmailFrom string `mapstructure:"EMAIL_FROM"`
 	SMTPHost  string `mapstructure:"SMTP_HOST"`
 	SMTPPass  string `mapstructure:"SMTP_PASS"`
