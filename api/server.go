@@ -57,7 +57,6 @@ func (server *Server) setupRouter() {
 	router.UnescapePathValues = false
 	v1 := router.Group("/api/v1")
 
-	authRoutesV1 := v1.Use(authMiddleware(server.tokenMaker))
 	v1.POST("/create-user", server.CreateUser)
 
 	v1.POST("/create-ano-user", server.CreateAnonymousUser)
@@ -65,6 +64,8 @@ func (server *Server) setupRouter() {
 	v1.POST("/social-login", server.SocialLogin)
 	v1.POST("/request-password", server.PasswordResetRequest)
 	v1.GET("/testing-endpoint", server.testing)
+
+	authRoutesV1 := v1.Use(authMiddleware(server.tokenMaker))
 
 	authRoutesV1.GET("/delete-user/", server.DeleteUser)
 
@@ -106,6 +107,11 @@ func ResponseHandlerJson(ctx *gin.Context, code int64, err error, data SuccessDa
 			Message:    err.Error(),
 			Data:       nil,
 			Status:     false,
+		}
+		switch err {
+		case errVerifiyingAuthHeader, errMissingAuthHeader, errInvalidAuthHeader:
+			ctx.AbortWithStatusJSON(int(code), response)
+			return
 		}
 		ctx.JSON(int(code), response)
 		return

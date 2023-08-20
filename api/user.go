@@ -236,7 +236,7 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 }
 
 func (server *Server) DeleteUser(ctx *gin.Context) {
-	authPayload := ctx.MustGet(autherizationPayloadKey).(*token.Payload)
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 
 	//delete question where user_id =id
 	server.store.DeleteAnswerByUserId(ctx, int32(authPayload.ID))

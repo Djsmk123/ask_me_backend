@@ -25,7 +25,7 @@ func (server *Server) CreateQuestion(ctx *gin.Context) {
 		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	authPayload := ctx.MustGet(autherizationPayloadKey).(*token.Payload)
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 
 	arg := db.CreateQuestionParams{
 		UserID:  int32(authPayload.ID),
@@ -84,7 +84,7 @@ func (server *Server) UpdateQuestionById(ctx *gin.Context) {
 		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	authPayload := ctx.MustGet(autherizationPayloadKey).(*token.Payload)
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 
 	userId := authPayload.ID
 	arg := db.UpdateQuestionByIdParams{
@@ -148,7 +148,7 @@ func (server *Server) ListQuestion(ctx *gin.Context) {
 	if len(search) > 0 {
 		search = "%" + search + "%"
 	}
-	authPayload := ctx.MustGet(autherizationPayloadKey).(*token.Payload)
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	arg := db.GetQuestionsByUserIDParams{
 		UserID: int32(authPayload.ID),
 		Limit:  req.PageSize,

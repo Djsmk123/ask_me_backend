@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"errors"
+
 	"net/http"
 
 	db "github.com/djsmk123/askmeapi/db/sqlc"
@@ -26,8 +27,7 @@ func (server *Server) CreateAnswer(ctx *gin.Context) {
 		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	authPayload := ctx.MustGet(autherizationPayloadKey).(*token.Payload)
-
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	arg := db.CreateAnswerParams{
 		UserID:     int32(authPayload.ID),
 		Content:    req.Content,
@@ -78,7 +78,7 @@ func (server *Server) UpdateAnswerById(ctx *gin.Context) {
 		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	authPayload := ctx.MustGet(autherizationPayloadKey).(*token.Payload)
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 
 	userId := authPayload.ID
 	arg := db.UpdateAnswersByQuestionIDParams{
@@ -140,7 +140,7 @@ func (server *Server) ListAnswers(ctx *gin.Context) {
 		return
 	}
 
-	authPayload := ctx.MustGet(autherizationPayloadKey).(*token.Payload)
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	search := req.Search
 
 	if len(req.Search) > 0 {
