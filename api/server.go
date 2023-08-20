@@ -62,7 +62,7 @@ func (server *Server) setupRouter() {
 	v1.POST("/create-ano-user", server.CreateAnonymousUser)
 	v1.POST("/login-user", server.LoginUser)
 	v1.POST("/social-login", server.SocialLogin)
-	v1.POST("/request-password", server.PasswordResetRequest)
+	v1.POST("/request-password-reset", server.PasswordResetRequest)
 
 	authRoutesV1 := v1.Use(authMiddleware(server.tokenMaker))
 
@@ -86,5 +86,6 @@ func (server *Server) setupRouter() {
 }
 
 func (server *Server) Start(address string) error {
+
 	return server.router.Run(address)
 }

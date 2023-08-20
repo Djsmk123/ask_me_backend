@@ -40,7 +40,7 @@ func RandomEmail() string {
 	return fakeEmail
 }
 
-func checkIsAnonymousUser(email string) bool {
+func CheckIsAnonymousUser(email string) bool {
 	parts := strings.Split(email, "@")
 	if len(parts) != 2 {
 		return false // Invalid email format

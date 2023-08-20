@@ -10,4 +10,5 @@ var (
 	errMissingAuthHeader    = errors.New("missing authorization header")
 	errInvalidAuthHeader    = errors.New("invalid authorization header")
 	errVerifiyingAuthHeader = errors.New("invalid authorization key")
+	errAnonymousUserFound   = errors.New("not authenticated to requesting this")
 )

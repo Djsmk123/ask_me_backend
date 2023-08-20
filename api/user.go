@@ -266,6 +266,13 @@ func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
+	// check if user is not anonymous
+	isAnonymous := utils.CheckIsAnonymousUser(req.Email)
+
+	if isAnonymous {
+		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, errAnonymousUserFound, nil)
+		return
+	}
 
 	//find user by email to check if user exists or not
 
@@ -275,6 +282,11 @@ func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 		UserErrorHandler(ctx, err)
 		return
 	}
+	// check if user is not logged with social account
+	if !user.PasswordHash.Valid {
+		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, errors.New("invalid resource request"), nil)
+	}
+
 	resetToken, err := server.passwordReset.CreateToken(int64(user.ID), 10*time.Minute)
 	if err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
@@ -282,7 +294,7 @@ func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 	}
 	encryptedUrl := url.QueryEscape(resetToken)
 	emailData := utils.EmailData{
-		URL:       "http://" + server.config.ServerAddress + "/reset-password-page?token=" + encryptedUrl,
+		URL:       server.config.ServerAddress + "/reset-password-page?token=" + encryptedUrl,
 		FirstName: user.Email,
 		Subject:   "Your password reset token (valid for 10min)",
 	}
@@ -302,6 +314,9 @@ func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 type ResetPasswordInput struct {
 	Password string `json:"password" binding:"required"`
 }
+type ResetPasswordQuery struct {
+	Token string `json:"token" binding:"required"`
+}
 
 func (server *Server) resetPaswordVerify(ctx *gin.Context) {
 	var req ResetPasswordInput
@@ -309,14 +324,12 @@ func (server *Server) resetPaswordVerify(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	token, exists := ctx.GetQuery("token")
-
-	if !exists && token != "" {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, errors.New("invalid url"), nil)
+	var tokReq ResetPasswordQuery
+	if err := ctx.ShouldBindQuery(&tokReq); err != nil {
+		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, errors.New("invalid url"), nil)
 		return
 	}
-
-	payload, err := server.passwordReset.VerifyToken(token)
+	payload, err := server.passwordReset.VerifyToken(tokReq.Token)
 	if err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return

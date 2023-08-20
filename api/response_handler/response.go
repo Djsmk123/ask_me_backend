@@ -27,10 +27,14 @@ func ResponseHandlerJson(ctx *gin.Context, code int64, err error, data SuccessDa
 	var response APIRESPONSE
 
 	if err != nil {
+		var response SuccessData = "invalid request"
+		if data != nil {
+			response = data
+		}
 		response = APIRESPONSE{
 			StatusCode: code,
 			Message:    err.Error(),
-			Data:       nil,
+			Data:       response,
 			Status:     false,
 		}
 		ctx.JSON(int(code), response)
