@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 
+	responsehandler "github.com/djsmk123/askmeapi/api/response_handler"
+
 	db "github.com/djsmk123/askmeapi/db/sqlc"
 
 	"github.com/djsmk123/askmeapi/token"
@@ -22,7 +24,7 @@ type CreateQuestionRequest struct {
 func (server *Server) CreateQuestion(ctx *gin.Context) {
 	var req CreateQuestionRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
@@ -35,10 +37,10 @@ func (server *Server) CreateQuestion(ctx *gin.Context) {
 	question, err := server.store.CreateQuestion(ctx, arg)
 
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	ResponseHandlerJson(ctx, http.StatusOK, nil, question)
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, question)
 }
 
 type UpdateQuestionRequest struct {
@@ -53,13 +55,13 @@ type DeleteQuestionRequest struct {
 func (server *Server) DeleteQuestionById(ctx *gin.Context) {
 	var req DeleteQuestionRequest
 	if err := ctx.ShouldBindUri(&req); err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	err := server.store.DeleteAnswerByQuestionId(ctx, int32(req.ID))
 
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
@@ -67,21 +69,21 @@ func (server *Server) DeleteQuestionById(ctx *gin.Context) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
+			responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
 			return
 		}
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
-	ResponseHandlerJson(ctx, http.StatusOK, nil, question)
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, question)
 
 }
 
 func (server *Server) UpdateQuestionById(ctx *gin.Context) {
 	var req UpdateQuestionRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
@@ -95,14 +97,14 @@ func (server *Server) UpdateQuestionById(ctx *gin.Context) {
 	question, err := server.store.UpdateQuestionById(ctx, arg)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
+			responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
 			return
 		}
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
-	ResponseHandlerJson(ctx, http.StatusOK, nil, question)
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, question)
 
 }
 
@@ -113,7 +115,7 @@ type GetQuestionRequest struct {
 func (server *Server) GetQuestionByID(ctx *gin.Context) {
 	var req GetQuestionRequest
 	if err := ctx.ShouldBindUri(&req); err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
@@ -121,13 +123,13 @@ func (server *Server) GetQuestionByID(ctx *gin.Context) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
+			responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
 			return
 		}
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	ResponseHandlerJson(ctx, http.StatusOK, nil, question)
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, question)
 
 }
 
@@ -140,7 +142,7 @@ type ListQuestionRequest struct {
 func (server *Server) ListQuestion(ctx *gin.Context) {
 	var req ListQuestionRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	search := req.Search
@@ -162,9 +164,9 @@ func (server *Server) ListQuestion(ctx *gin.Context) {
 	questions, err := server.store.GetQuestionsByUserID(ctx, arg)
 
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	ResponseHandlerJson(ctx, http.StatusOK, nil, questions)
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, questions)
 
 }

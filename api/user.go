@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"time"
 
+	responsehandler "github.com/djsmk123/askmeapi/api/response_handler"
 	db "github.com/djsmk123/askmeapi/db/sqlc"
 	"github.com/djsmk123/askmeapi/token"
 	"github.com/djsmk123/askmeapi/utils"
@@ -48,7 +49,7 @@ func GetUserResponse(user db.User) UserResponseType {
 func (server *Server) CreateAnonymousUser(ctx *gin.Context) {
 	randomUser, err := utils.GenerateRandomUser()
 	if (err) != nil {
-		ResponseHandlerJson(ctx, http.StatusBadRequest, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, err, nil)
 		return
 	}
 	arg := db.CreateUserParams{
@@ -66,19 +67,19 @@ func (server *Server) CreateAnonymousUser(ctx *gin.Context) {
 		if pqErr, ok := err.(*pq.Error); ok {
 			switch pqErr.Code.Name() {
 			case "unique_violation", "unique_key_voilation":
-				ResponseHandlerJson(ctx, http.StatusForbidden, errUserAlreadyExist, nil)
+				responsehandler.ResponseHandlerJson(ctx, http.StatusForbidden, errUserAlreadyExist, nil)
 				return
 			}
 
 		}
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 
 		return
 	}
 	accesstoken, err := server.tokenMaker.CreateToken(int64(user.ID), user.Username, server.config.AccessTokenDuration)
 
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	resp := GetUserResponse(user)
@@ -87,25 +88,25 @@ func (server *Server) CreateAnonymousUser(ctx *gin.Context) {
 		AccessToken: accesstoken,
 		User:        resp,
 	}
-	ResponseHandlerJson(ctx, http.StatusOK, nil, newResp)
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, newResp)
 
 }
 
 func (server *Server) CreateUser(ctx *gin.Context) {
 	var req CreateNewUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ResponseHandlerJson(ctx, http.StatusBadRequest, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, err, nil)
 		return
 	}
 	hashPassword, err := utils.HashPassword(req.Password)
 
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	username := utils.RandomUserName(req.Email)
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
@@ -124,19 +125,19 @@ func (server *Server) CreateUser(ctx *gin.Context) {
 		if pqErr, ok := err.(*pq.Error); ok {
 			switch pqErr.Code.Name() {
 			case "unique_violation", "unique_key_voilation":
-				ResponseHandlerJson(ctx, http.StatusForbidden, errUserAlreadyExist, nil)
+				responsehandler.ResponseHandlerJson(ctx, http.StatusForbidden, errUserAlreadyExist, nil)
 				return
 			}
 
 		}
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 
 		return
 	}
 	accesstoken, err := server.tokenMaker.CreateToken(int64(user.ID), user.Username, server.config.AccessTokenDuration)
 
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	resp := GetUserResponse(user)
@@ -145,7 +146,7 @@ func (server *Server) CreateUser(ctx *gin.Context) {
 		AccessToken: accesstoken,
 		User:        resp,
 	}
-	ResponseHandlerJson(ctx, http.StatusOK, nil, newResp)
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, newResp)
 }
 
 type LoginUserRequest struct {
@@ -156,7 +157,7 @@ type LoginUserRequest struct {
 func (server *Server) LoginUser(ctx *gin.Context) {
 	var req LoginUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
@@ -164,15 +165,15 @@ func (server *Server) LoginUser(ctx *gin.Context) {
 	if err != nil {
 		fmt.Println("Error getting user", err == sql.ErrNoRows)
 		if err == sql.ErrNoRows || err.Error() == "no rows in result set" {
-			ResponseHandlerJson(ctx, http.StatusNotFound, errUserNotExist, nil)
+			responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errUserNotExist, nil)
 			return
 		}
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	err = utils.CheckPassword(req.Password, user.PasswordHash.String)
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusUnauthorized, errWrongPassword, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusUnauthorized, errWrongPassword, nil)
 		return
 	}
 	server.CreateUserObjectForAuth(user, ctx)
@@ -181,14 +182,14 @@ func (server *Server) LoginUser(ctx *gin.Context) {
 func (server *Server) CreateUserObjectForAuth(user db.User, ctx *gin.Context) {
 	accesstoken, err := server.tokenMaker.CreateToken(int64(user.ID), user.Username, server.config.AccessTokenDuration)
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	rsp := UserResponseTypeWithToken{
 		AccessToken: accesstoken,
 		User:        GetUserResponse(user),
 	}
-	ResponseHandlerJson(ctx, http.StatusOK, nil, rsp)
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, rsp)
 }
 
 type SocialLoginRequestType struct {
@@ -200,7 +201,7 @@ type SocialLoginRequestType struct {
 func (server *Server) SocialLogin(ctx *gin.Context) {
 	var req SocialLoginRequestType
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	user, err := server.store.GetUserByEmail(ctx, req.Email)
@@ -221,7 +222,7 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 			user, err := server.store.CreateUser(ctx, arg)
 
 			if err != nil {
-				ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+				responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 				return
 			}
 			server.CreateUserObjectForAuth(user, ctx)
@@ -229,7 +230,7 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 
 		}
 
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	server.CreateUserObjectForAuth(user, ctx)
@@ -247,14 +248,14 @@ func (server *Server) DeleteUser(ctx *gin.Context) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
+			responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
 			return
 		}
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
-	ResponseHandlerJson(ctx, http.StatusOK, nil, user)
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, user)
 
 }
 
@@ -265,7 +266,7 @@ type PasswordResetRequest struct {
 func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 	var req PasswordResetRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
@@ -275,15 +276,15 @@ func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ResponseHandlerJson(ctx, http.StatusNotFound, errUserNotExist, nil)
+			responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errUserNotExist, nil)
 			return
 		}
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	resetToken, err := server.passwordReset.CreateToken(int64(user.ID), 10*time.Minute)
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	encryptedUrl := url.QueryEscape(resetToken)
@@ -295,10 +296,10 @@ func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 
 	err = utils.SendEmail(user.Email, &server.config, &emailData, "resetPassword.html")
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	ResponseHandlerJson(ctx, http.StatusOK, nil, gin.H{
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, gin.H{
 		"message":  "Email has been sent successfully",
 		"response": emailData,
 	})
@@ -312,29 +313,29 @@ type ResetPasswordInput struct {
 func (server *Server) resetPaswordVerify(ctx *gin.Context) {
 	var req ResetPasswordInput
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	token, exists := ctx.GetQuery("token")
 
 	if !exists && token != "" {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, errors.New("invalid url"), nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, errors.New("invalid url"), nil)
 		return
 	}
 
 	payload, err := server.passwordReset.VerifyToken(token)
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	err = payload.Valid()
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusUnauthorized, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusUnauthorized, err, nil)
 		return
 	}
 	newPasswordHash, err := utils.HashPassword(req.Password)
 	if err != nil {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
@@ -346,10 +347,10 @@ func (server *Server) resetPaswordVerify(ctx *gin.Context) {
 		},
 	})
 	if err != nil || user.ID < 0 {
-		ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
 	ctx.SetCookie("token", "", -1, "/", "localhost", false, true)
-	ResponseHandlerJson(ctx, http.StatusOK, nil, gin.H{"status": "success", "message": "Password data updated successfully"})
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, gin.H{"status": "success", "message": "Password data updated successfully"})
 }

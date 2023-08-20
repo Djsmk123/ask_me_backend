@@ -63,7 +63,6 @@ func (server *Server) setupRouter() {
 	v1.POST("/login-user", server.LoginUser)
 	v1.POST("/social-login", server.SocialLogin)
 	v1.POST("/request-password", server.PasswordResetRequest)
-	v1.GET("/testing-endpoint", server.testing)
 
 	authRoutesV1 := v1.Use(authMiddleware(server.tokenMaker))
 
@@ -87,41 +86,4 @@ func (server *Server) setupRouter() {
 
 func (server *Server) Start(address string) error {
 	return server.router.Run(address)
-}
-
-type APIRESPONSE struct {
-	StatusCode int64       `json:"status_code"`
-	Message    string      `json:"message"`
-	Data       SuccessData `json:"data"`
-	Status     bool        `json:"status"`
-}
-
-type SuccessData interface{}
-
-func ResponseHandlerJson(ctx *gin.Context, code int64, err error, data SuccessData) {
-	var response APIRESPONSE
-
-	if err != nil {
-		response = APIRESPONSE{
-			StatusCode: code,
-			Message:    err.Error(),
-			Data:       nil,
-			Status:     false,
-		}
-		switch err {
-		case errVerifiyingAuthHeader, errMissingAuthHeader, errInvalidAuthHeader:
-			ctx.AbortWithStatusJSON(int(code), response)
-			return
-		}
-		ctx.JSON(int(code), response)
-		return
-	}
-	response = APIRESPONSE{
-		StatusCode: code,
-		Message:    "Success",
-		Data:       data,
-		Status:     true,
-	}
-	ctx.JSON(int(code), response)
-
 }
