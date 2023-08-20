@@ -324,12 +324,14 @@ func (server *Server) resetPaswordVerify(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	var tokReq ResetPasswordQuery
-	if err := ctx.ShouldBindQuery(&tokReq); err != nil {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, errors.New("invalid url"), nil)
+	token, exists := ctx.GetQuery("token")
+
+	if !exists && token != "" {
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, errors.New("invalid url"), nil)
 		return
 	}
-	payload, err := server.passwordReset.VerifyToken(tokReq.Token)
+
+	payload, err := server.passwordReset.VerifyToken(token)
 	if err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
