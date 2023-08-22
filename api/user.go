@@ -186,6 +186,7 @@ func (server *Server) CreateUserObjectForAuth(user db.User, ctx *gin.Context, is
 			User:        GetUserResponse(user),
 		}
 		responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, rsp)
+		return
 	}
 	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, GetUserResponse(user))
 
