@@ -10,16 +10,24 @@ import (
 
 type Querier interface {
 	CreateAnswer(ctx context.Context, arg CreateAnswerParams) (Answer, error)
+	CreateFcmToken(ctx context.Context, arg CreateFcmTokenParams) (FcmToken, error)
+	CreateJwtToken(ctx context.Context, arg CreateJwtTokenParams) (Token, error)
 	CreateQuestion(ctx context.Context, arg CreateQuestionParams) (Question, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteAnswerById(ctx context.Context, id int32) (Answer, error)
 	DeleteAnswerByQuestionId(ctx context.Context, questionID int32) error
 	DeleteAnswerByUserId(ctx context.Context, userID int32) error
+	DeleteFcmToken(ctx context.Context, id int32) (FcmToken, error)
+	DeleteJwtToken(ctx context.Context, id int32) (Token, error)
 	DeleteQuestionByUserId(ctx context.Context, userID int32) error
 	DeleteUserById(ctx context.Context, id int32) (User, error)
 	GetAnswerByID(ctx context.Context, id int32) (Answer, error)
 	GetAnswerForUpdate(ctx context.Context, id int32) (Answer, error)
 	GetAnswersByQuestionID(ctx context.Context, arg GetAnswersByQuestionIDParams) ([]Answer, error)
+	GetFcmTokenById(ctx context.Context, id int32) (FcmToken, error)
+	GetFcmTokenUserId(ctx context.Context, userID int32) (FcmToken, error)
+	GetJwtTokenById(ctx context.Context, id int32) (Token, error)
+	GetJwtTokenUserId(ctx context.Context, arg GetJwtTokenUserIdParams) (Token, error)
 	GetQuestionByID(ctx context.Context, id int32) (Question, error)
 	GetQuestionForUpdate(ctx context.Context, id int32) (Question, error)
 	GetQuestionsByUserID(ctx context.Context, arg GetQuestionsByUserIDParams) ([]Question, error)
@@ -27,6 +35,8 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id int32) (User, error)
 	QuestionDelete(ctx context.Context, id int32) (Question, error)
 	UpdateAnswersByQuestionID(ctx context.Context, arg UpdateAnswersByQuestionIDParams) (Answer, error)
+	UpdateFcmToken(ctx context.Context, arg UpdateFcmTokenParams) (FcmToken, error)
+	UpdateJwtToken(ctx context.Context, arg UpdateJwtTokenParams) (Token, error)
 	UpdateQuestionById(ctx context.Context, arg UpdateQuestionByIdParams) (Question, error)
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error)
 }

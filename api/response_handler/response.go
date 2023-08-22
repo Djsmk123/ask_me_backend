@@ -8,7 +8,7 @@ type APIRESPONSE struct {
 	StatusCode int64       `json:"status_code"`
 	Message    string      `json:"message"`
 	Data       SuccessData `json:"data"`
-	Status     bool        `json:"status"`
+	Success    bool        `json:"success"`
 }
 
 type SuccessData interface{}
@@ -18,7 +18,7 @@ func ResponseHandlerAbort(ctx *gin.Context, code int64, err error) {
 		StatusCode: code,
 		Message:    err.Error(),
 		Data:       nil,
-		Status:     false,
+		Success:    false,
 	}
 	ctx.AbortWithStatusJSON(int(code), response)
 
@@ -28,23 +28,27 @@ func ResponseHandlerJson(ctx *gin.Context, code int64, err error, data SuccessDa
 
 	if err != nil {
 		var response SuccessData = "invalid request"
+		e := err.Error()
 		if data != nil {
 			response = data
 		}
+		if e == "dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it." {
+			e = "Connection establishment failed"
+		}
 		response = APIRESPONSE{
 			StatusCode: code,
-			Message:    err.Error(),
+			Message:    e,
 			Data:       response,
-			Status:     false,
+			Success:    false,
 		}
 		ctx.JSON(int(code), response)
 		return
 	}
 	response = APIRESPONSE{
 		StatusCode: code,
-		Message:    "Success",
+		Message:    "Request has been served successfully",
 		Data:       data,
-		Status:     true,
+		Success:    true,
 	}
 	ctx.JSON(int(code), response)
 }

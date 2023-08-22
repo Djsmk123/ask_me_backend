@@ -67,19 +67,13 @@ func (server *Server) CreateAnonymousUser(ctx *gin.Context) {
 		UserErrorHandler(ctx, err)
 		return
 	}
-	accesstoken, err := server.tokenMaker.CreateToken(int64(user.ID), user.Username, server.config.AccessTokenDuration)
 
 	if err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	resp := GetUserResponse(user)
 
-	newResp := UserResponseTypeWithToken{
-		AccessToken: accesstoken,
-		User:        resp,
-	}
-	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, newResp)
+	server.CreateUserObjectForAuth(user, ctx, false)
 
 }
 
@@ -153,20 +147,48 @@ func (server *Server) LoginUser(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusUnauthorized, errWrongPassword, nil)
 		return
 	}
-	server.CreateUserObjectForAuth(user, ctx)
+	server.CreateUserObjectForAuth(user, ctx, false)
 
 }
-func (server *Server) CreateUserObjectForAuth(user db.User, ctx *gin.Context) {
-	accesstoken, err := server.tokenMaker.CreateToken(int64(user.ID), user.Username, server.config.AccessTokenDuration)
+
+func (server *Server) CreateJwtToken(ctx *gin.Context, userId int64, username string) (string, error) {
+	accesstoken, err := server.tokenMaker.CreateToken(userId, username, server.config.AccessTokenDuration)
 	if err != nil {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
-		return
+		return "", err
 	}
-	rsp := UserResponseTypeWithToken{
-		AccessToken: accesstoken,
-		User:        GetUserResponse(user),
+	//save token to database
+
+	arg := db.CreateJwtTokenParams{
+		UserID:   int32(userId),
+		JwtToken: accesstoken,
+		IsValid:  1,
 	}
-	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, rsp)
+
+	__, err := server.store.CreateJwtToken(ctx, arg)
+
+	if err != nil || __.IsValid == 0 {
+		return "", err
+	}
+	return accesstoken, nil
+
+}
+func (server *Server) CreateUserObjectForAuth(user db.User, ctx *gin.Context, isLoggedIn bool) {
+
+	if !isLoggedIn {
+		t, err := server.CreateJwtToken(ctx, int64(user.ID), user.Username)
+		if err != nil {
+			responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+			return
+		}
+
+		rsp := UserResponseTypeWithToken{
+			AccessToken: t,
+			User:        GetUserResponse(user),
+		}
+		responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, rsp)
+	}
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, GetUserResponse(user))
+
 }
 
 type SocialLoginRequestType struct {
@@ -202,7 +224,7 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 				responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 				return
 			}
-			server.CreateUserObjectForAuth(user, ctx)
+			server.CreateUserObjectForAuth(user, ctx, false)
 			return
 
 		}
@@ -220,7 +242,7 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 		return
 	}
 
-	server.CreateUserObjectForAuth(user, ctx)
+	server.CreateUserObjectForAuth(user, ctx, false)
 }
 
 func (server *Server) GetUser(ctx *gin.Context) {
@@ -231,7 +253,7 @@ func (server *Server) GetUser(ctx *gin.Context) {
 		UserErrorHandler(ctx, err)
 		return
 	}
-	server.CreateUserObjectForAuth(user, ctx)
+	server.CreateUserObjectForAuth(user, ctx, true)
 
 }
 func (server *Server) DeleteUser(ctx *gin.Context) {

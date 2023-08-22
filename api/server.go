@@ -64,7 +64,7 @@ func (server *Server) setupRouter() {
 	v1.POST("/social-login", server.SocialLogin)
 	v1.POST("/request-password-reset", server.PasswordResetRequest)
 
-	authRoutesV1 := v1.Use(authMiddleware(server.tokenMaker))
+	authRoutesV1 := v1.Use(server.authMiddleware(server.tokenMaker))
 
 	authRoutesV1.GET("/delete-user/", server.DeleteUser)
 	authRoutesV1.GET("/get-user/", server.GetUser)
