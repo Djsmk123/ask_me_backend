@@ -467,6 +467,6 @@ func (server *Server) LogoutUser(ctx *gin.Context) {
 		return
 	}
 
-	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, err, "Successfully log-out")
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, "Successfully log-out")
 
 }
