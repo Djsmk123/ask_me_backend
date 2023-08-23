@@ -1,5 +1,5 @@
 -- name: CreateJwtToken :one
-INSERT INTO "Token" (user_id,jwt_token,is_valid) VALUES ($1, $2, $3) RETURNING *;
+INSERT INTO "Token" (user_id,jwt_token,created_at,expires_at) VALUES ($1, $2, $3,$4) RETURNING *;
 
 -- name: GetJwtTokenById :one
 SELECT * FROM "Token" WHERE id = $1;
@@ -12,11 +12,15 @@ SELECT * FROM "Token" WHERE jwt_token ILIKE $2 and user_id = $1;
 DELETE FROM "Token" WHERE
 id=$1 RETURNING *;
 
+
+-- name: DeleteJWTokenByUserId :many
+DELETE FROM "Token" WHERE user_id = $1
+RETURNING *;
+
 -- name: UpdateJwtToken :one
 UPDATE "Token" 
-SET jwt_token = $2, 
-is_valid=$3
-WHERE id = $1
+SET expires_at=now()
+WHERE jwt_token ILIKE $1 and user_id = $2
 RETURNING * ;
 
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	responsehandler "github.com/djsmk123/askmeapi/api/response_handler"
 	db "github.com/djsmk123/askmeapi/db/sqlc"
@@ -66,8 +67,7 @@ func (server *Server) authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, err)
 			return
 		}
-
-		if token.IsValid != 1 {
+		if token.ExpiresAt.Before(time.Now()) {
 			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errExpiredToken)
 			return
 		}

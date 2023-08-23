@@ -10,17 +10,23 @@ import (
 )
 
 const createFcmToken = `-- name: CreateFcmToken :one
-INSERT INTO "FcmToken" (user_id,fcm_token,is_valid) VALUES ($1, $2, $3) RETURNING id, user_id, fcm_token, is_valid, created_at
+INSERT INTO "FcmToken" (id,user_id,fcm_token,is_valid) VALUES ($1, $2, $3,$4) RETURNING id, user_id, fcm_token, is_valid, created_at
 `
 
 type CreateFcmTokenParams struct {
+	ID       int32  `json:"id"`
 	UserID   int32  `json:"user_id"`
 	FcmToken string `json:"fcm_token"`
-	IsValid  int32  `json:"is_valid"`
+	IsValid  bool   `json:"is_valid"`
 }
 
 func (q *Queries) CreateFcmToken(ctx context.Context, arg CreateFcmTokenParams) (FcmToken, error) {
-	row := q.db.QueryRowContext(ctx, createFcmToken, arg.UserID, arg.FcmToken, arg.IsValid)
+	row := q.db.QueryRowContext(ctx, createFcmToken,
+		arg.ID,
+		arg.UserID,
+		arg.FcmToken,
+		arg.IsValid,
+	)
 	var i FcmToken
 	err := row.Scan(
 		&i.ID,
@@ -48,6 +54,40 @@ func (q *Queries) DeleteFcmToken(ctx context.Context, id int32) (FcmToken, error
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const deleteFcmTokenByUserId = `-- name: DeleteFcmTokenByUserId :many
+DELETE FROM "FcmToken" WHERE user_id = $1
+RETURNING id, user_id, fcm_token, is_valid, created_at
+`
+
+func (q *Queries) DeleteFcmTokenByUserId(ctx context.Context, userID int32) ([]FcmToken, error) {
+	rows, err := q.db.QueryContext(ctx, deleteFcmTokenByUserId, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FcmToken{}
+	for rows.Next() {
+		var i FcmToken
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FcmToken,
+			&i.IsValid,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getFcmTokenById = `-- name: GetFcmTokenById :one
@@ -86,20 +126,18 @@ func (q *Queries) GetFcmTokenUserId(ctx context.Context, userID int32) (FcmToken
 
 const updateFcmToken = `-- name: UpdateFcmToken :one
 UPDATE "FcmToken" 
-SET fcm_token = $2, 
-is_valid=$3
+SET is_valid=$2
 WHERE id = $1
 RETURNING id, user_id, fcm_token, is_valid, created_at
 `
 
 type UpdateFcmTokenParams struct {
-	ID       int32  `json:"id"`
-	FcmToken string `json:"fcm_token"`
-	IsValid  int32  `json:"is_valid"`
+	ID      int32 `json:"id"`
+	IsValid bool  `json:"is_valid"`
 }
 
 func (q *Queries) UpdateFcmToken(ctx context.Context, arg UpdateFcmTokenParams) (FcmToken, error) {
-	row := q.db.QueryRowContext(ctx, updateFcmToken, arg.ID, arg.FcmToken, arg.IsValid)
+	row := q.db.QueryRowContext(ctx, updateFcmToken, arg.ID, arg.IsValid)
 	var i FcmToken
 	err := row.Scan(
 		&i.ID,

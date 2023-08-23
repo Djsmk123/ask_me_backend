@@ -22,7 +22,7 @@ type FcmToken struct {
 	ID        int32     `json:"id"`
 	UserID    int32     `json:"user_id"`
 	FcmToken  string    `json:"fcm_token"`
-	IsValid   int32     `json:"is_valid"`
+	IsValid   bool      `json:"is_valid"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -38,7 +38,7 @@ type Token struct {
 	ID        int32     `json:"id"`
 	UserID    int32     `json:"user_id"`
 	JwtToken  string    `json:"jwt_token"`
-	IsValid   int32     `json:"is_valid"`
+	ExpiresAt time.Time `json:"expires_at"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

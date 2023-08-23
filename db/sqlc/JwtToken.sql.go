@@ -7,34 +7,75 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const createJwtToken = `-- name: CreateJwtToken :one
-INSERT INTO "Token" (user_id,jwt_token,is_valid) VALUES ($1, $2, $3) RETURNING id, user_id, jwt_token, is_valid, created_at
+INSERT INTO "Token" (user_id,jwt_token,created_at,expires_at) VALUES ($1, $2, $3,$4) RETURNING id, user_id, jwt_token, expires_at, created_at
 `
 
 type CreateJwtTokenParams struct {
-	UserID   int32  `json:"user_id"`
-	JwtToken string `json:"jwt_token"`
-	IsValid  int32  `json:"is_valid"`
+	UserID    int32     `json:"user_id"`
+	JwtToken  string    `json:"jwt_token"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 func (q *Queries) CreateJwtToken(ctx context.Context, arg CreateJwtTokenParams) (Token, error) {
-	row := q.db.QueryRowContext(ctx, createJwtToken, arg.UserID, arg.JwtToken, arg.IsValid)
+	row := q.db.QueryRowContext(ctx, createJwtToken,
+		arg.UserID,
+		arg.JwtToken,
+		arg.CreatedAt,
+		arg.ExpiresAt,
+	)
 	var i Token
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.JwtToken,
-		&i.IsValid,
+		&i.ExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
+const deleteJWTokenByUserId = `-- name: DeleteJWTokenByUserId :many
+DELETE FROM "Token" WHERE user_id = $1
+RETURNING id, user_id, jwt_token, expires_at, created_at
+`
+
+func (q *Queries) DeleteJWTokenByUserId(ctx context.Context, userID int32) ([]Token, error) {
+	rows, err := q.db.QueryContext(ctx, deleteJWTokenByUserId, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Token{}
+	for rows.Next() {
+		var i Token
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.JwtToken,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteJwtToken = `-- name: DeleteJwtToken :one
 DELETE FROM "Token" WHERE
-id=$1 RETURNING id, user_id, jwt_token, is_valid, created_at
+id=$1 RETURNING id, user_id, jwt_token, expires_at, created_at
 `
 
 func (q *Queries) DeleteJwtToken(ctx context.Context, id int32) (Token, error) {
@@ -44,14 +85,14 @@ func (q *Queries) DeleteJwtToken(ctx context.Context, id int32) (Token, error) {
 		&i.ID,
 		&i.UserID,
 		&i.JwtToken,
-		&i.IsValid,
+		&i.ExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getJwtTokenById = `-- name: GetJwtTokenById :one
-SELECT id, user_id, jwt_token, is_valid, created_at FROM "Token" WHERE id = $1
+SELECT id, user_id, jwt_token, expires_at, created_at FROM "Token" WHERE id = $1
 `
 
 func (q *Queries) GetJwtTokenById(ctx context.Context, id int32) (Token, error) {
@@ -61,14 +102,14 @@ func (q *Queries) GetJwtTokenById(ctx context.Context, id int32) (Token, error) 
 		&i.ID,
 		&i.UserID,
 		&i.JwtToken,
-		&i.IsValid,
+		&i.ExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getJwtTokenUserId = `-- name: GetJwtTokenUserId :one
-SELECT id, user_id, jwt_token, is_valid, created_at FROM "Token" WHERE jwt_token ILIKE $2 and user_id = $1
+SELECT id, user_id, jwt_token, expires_at, created_at FROM "Token" WHERE jwt_token ILIKE $2 and user_id = $1
 `
 
 type GetJwtTokenUserIdParams struct {
@@ -83,7 +124,7 @@ func (q *Queries) GetJwtTokenUserId(ctx context.Context, arg GetJwtTokenUserIdPa
 		&i.ID,
 		&i.UserID,
 		&i.JwtToken,
-		&i.IsValid,
+		&i.ExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -91,26 +132,24 @@ func (q *Queries) GetJwtTokenUserId(ctx context.Context, arg GetJwtTokenUserIdPa
 
 const updateJwtToken = `-- name: UpdateJwtToken :one
 UPDATE "Token" 
-SET jwt_token = $2, 
-is_valid=$3
-WHERE id = $1
-RETURNING id, user_id, jwt_token, is_valid, created_at
+SET expires_at=now()
+WHERE jwt_token ILIKE $1 and user_id = $2
+RETURNING id, user_id, jwt_token, expires_at, created_at
 `
 
 type UpdateJwtTokenParams struct {
-	ID       int32  `json:"id"`
 	JwtToken string `json:"jwt_token"`
-	IsValid  int32  `json:"is_valid"`
+	UserID   int32  `json:"user_id"`
 }
 
 func (q *Queries) UpdateJwtToken(ctx context.Context, arg UpdateJwtTokenParams) (Token, error) {
-	row := q.db.QueryRowContext(ctx, updateJwtToken, arg.ID, arg.JwtToken, arg.IsValid)
+	row := q.db.QueryRowContext(ctx, updateJwtToken, arg.JwtToken, arg.UserID)
 	var i Token
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.JwtToken,
-		&i.IsValid,
+		&i.ExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err

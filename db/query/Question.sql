@@ -12,11 +12,11 @@ SELECT * FROM "Question" WHERE id = $1 LIMIT 1 For No Key Update;
 -- name: GetQuestionsByUserID :many
 SELECT *
 FROM "Question"
-WHERE "user_id" = $1
+WHERE  ("user_id"=sqlc.narg('user_id') OR sqlc.narg('user_id') IS NULL)
 AND ("content" ILike sqlc.narg('content') OR sqlc.narg('content') IS NULL)
 ORDER BY "created_at" DESC
-LIMIT $2
-OFFSET $3;
+LIMIT $1
+OFFSET $2;
 
 -- name: UpdateQuestionById :one
 Update "Question"

@@ -68,6 +68,7 @@ func (server *Server) setupRouter() {
 
 	authRoutesV1.GET("/delete-user/", server.DeleteUser)
 	authRoutesV1.GET("/get-user/", server.GetUser)
+	authRoutesV1.POST("/logout/", server.LogoutUser)
 
 	authRoutesV1.POST("/create-question", server.CreateQuestion)
 	authRoutesV1.POST("/update-question", server.UpdateQuestionById)

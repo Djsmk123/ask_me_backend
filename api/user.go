@@ -32,6 +32,7 @@ type UserResponseTypeWithToken struct {
 type CreateNewUserRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
+	FcmToken string `json:"fcm_token"`
 }
 
 func GetUserResponse(user db.User) UserResponseType {
@@ -46,7 +47,18 @@ func GetUserResponse(user db.User) UserResponseType {
 	}
 }
 
+type CreateAnoUserRequest struct {
+	FcmToken string `json:"fcm_token"`
+}
+
 func (server *Server) CreateAnonymousUser(ctx *gin.Context) {
+
+	var req CreateAnoUserRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+
 	randomUser, err := utils.GenerateRandomUser()
 	if (err) != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, err, nil)
@@ -73,7 +85,28 @@ func (server *Server) CreateAnonymousUser(ctx *gin.Context) {
 		return
 	}
 
-	server.CreateUserObjectForAuth(user, ctx, false)
+	server.CreateUserObjectForAuth(user, ctx, false, req.FcmToken)
+
+}
+
+func (server *Server) CreateFcmToken(ctx *gin.Context, token string, user db.User, jwtId int) error {
+	if token == "Null" || len(token) <= 0 {
+		return nil
+	}
+	//save token in the database
+
+	arg := db.CreateFcmTokenParams{
+		ID:       int32(jwtId),
+		UserID:   user.ID,
+		FcmToken: token,
+		IsValid:  true,
+	}
+	_, err := server.store.CreateFcmToken(ctx, arg)
+
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 
@@ -110,24 +143,15 @@ func (server *Server) CreateUser(ctx *gin.Context) {
 		UserErrorHandler(ctx, err)
 		return
 	}
-	accesstoken, err := server.tokenMaker.CreateToken(int64(user.ID), user.Username, server.config.AccessTokenDuration)
 
-	if err != nil {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
-		return
-	}
-	resp := GetUserResponse(user)
+	server.CreateUserObjectForAuth(user, ctx, false, req.FcmToken)
 
-	newResp := UserResponseTypeWithToken{
-		AccessToken: accesstoken,
-		User:        resp,
-	}
-	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, newResp)
 }
 
 type LoginUserRequest struct {
 	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6" `
+	Password string `json:"password" binding:"required,min=6"`
+	FcmToken string `json:"fcm_token"`
 }
 
 func (server *Server) LoginUser(ctx *gin.Context) {
@@ -147,32 +171,39 @@ func (server *Server) LoginUser(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusUnauthorized, errWrongPassword, nil)
 		return
 	}
-	server.CreateUserObjectForAuth(user, ctx, false)
+
+	server.CreateUserObjectForAuth(user, ctx, false, req.FcmToken)
 
 }
 
 func (server *Server) CreateJwtToken(ctx *gin.Context, userId int64, username string) (string, error) {
 	accesstoken, err := server.tokenMaker.CreateToken(userId, username, server.config.AccessTokenDuration)
+
+	if err != nil {
+		return "", err
+	}
+	payload, err := server.tokenMaker.VerifyToken(accesstoken)
 	if err != nil {
 		return "", err
 	}
 	//save token to database
 
 	arg := db.CreateJwtTokenParams{
-		UserID:   int32(userId),
-		JwtToken: accesstoken,
-		IsValid:  1,
+		UserID:    int32(userId),
+		JwtToken:  accesstoken,
+		CreatedAt: payload.IssuedAt,
+		ExpiresAt: payload.ExpiredAt,
 	}
 
 	__, err := server.store.CreateJwtToken(ctx, arg)
 
-	if err != nil || __.IsValid == 0 {
+	if err != nil || __.ExpiresAt.Before(time.Now()) {
 		return "", err
 	}
 	return accesstoken, nil
 
 }
-func (server *Server) CreateUserObjectForAuth(user db.User, ctx *gin.Context, isLoggedIn bool) {
+func (server *Server) CreateUserObjectForAuth(user db.User, ctx *gin.Context, isLoggedIn bool, fcmToken string) {
 
 	if !isLoggedIn {
 		t, err := server.CreateJwtToken(ctx, int64(user.ID), user.Username)
@@ -180,12 +211,22 @@ func (server *Server) CreateUserObjectForAuth(user db.User, ctx *gin.Context, is
 			responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 			return
 		}
-
+		authpayload, err := server.tokenMaker.VerifyToken(t)
+		if err != nil {
+			responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+			return
+		}
 		rsp := UserResponseTypeWithToken{
 			AccessToken: t,
 			User:        GetUserResponse(user),
 		}
+		err = server.CreateFcmToken(ctx, fcmToken, user, int(authpayload.ID))
+		if err != nil {
+			responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+			return
+		}
 		responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, rsp)
+
 		return
 	}
 	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, GetUserResponse(user))
@@ -196,6 +237,7 @@ type SocialLoginRequestType struct {
 	Email               string `json:"email" binding:"required,email"`
 	PrivateProfileImage string `json:"private_profile_image"`
 	Provider            string `json:"provider" binding:"required"`
+	FcmToken            string `json:"fcm_token"`
 }
 
 func (server *Server) SocialLogin(ctx *gin.Context) {
@@ -225,7 +267,8 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 				responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 				return
 			}
-			server.CreateUserObjectForAuth(user, ctx, false)
+
+			server.CreateUserObjectForAuth(user, ctx, false, req.FcmToken)
 			return
 
 		}
@@ -242,8 +285,7 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, errors.New("invalid resource request"), nil)
 		return
 	}
-
-	server.CreateUserObjectForAuth(user, ctx, false)
+	server.CreateUserObjectForAuth(user, ctx, false, req.FcmToken)
 }
 
 func (server *Server) GetUser(ctx *gin.Context) {
@@ -254,7 +296,7 @@ func (server *Server) GetUser(ctx *gin.Context) {
 		UserErrorHandler(ctx, err)
 		return
 	}
-	server.CreateUserObjectForAuth(user, ctx, true)
+	server.CreateUserObjectForAuth(user, ctx, true, "")
 
 }
 func (server *Server) DeleteUser(ctx *gin.Context) {
@@ -264,6 +306,9 @@ func (server *Server) DeleteUser(ctx *gin.Context) {
 	server.store.DeleteAnswerByUserId(ctx, int32(authPayload.ID))
 
 	server.store.DeleteQuestionByUserId(ctx, int32(authPayload.ID))
+
+	server.store.DeleteFcmTokenByUserId(ctx, int32(authPayload.ID))
+	server.store.DeleteJWTokenByUserId(ctx, int32(authPayload.ID))
 
 	_, err := server.store.DeleteUserById(ctx, int32(authPayload.ID))
 	if (err) != nil {
@@ -392,4 +437,36 @@ func (server *Server) ResetPaswordVerify(ctx *gin.Context) {
 
 	ctx.SetCookie("token", "", -1, "/", "localhost", false, true)
 	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, gin.H{"status": "success", "message": "Password data updated successfully"})
+}
+
+func (server *Server) LogoutUser(ctx *gin.Context) {
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	fields := strings.Fields(ctx.GetHeader("authorization"))
+
+	payload := fields[1]
+
+	arg := db.UpdateJwtTokenParams{
+		JwtToken: payload,
+		UserID:   int32(authPayload.ID),
+	}
+	_, err := server.store.UpdateJwtToken(ctx, arg)
+
+	if err != nil {
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+	//update fcm toke if exist
+	arg1 := db.UpdateFcmTokenParams{
+		ID:      int32(authPayload.ID),
+		IsValid: false,
+	}
+	_, err = server.store.UpdateFcmToken(ctx, arg1)
+
+	if err != nil && err != sql.ErrNoRows {
+		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, err, "Successfully log-out")
+
 }

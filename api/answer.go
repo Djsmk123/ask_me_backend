@@ -132,6 +132,7 @@ type ListAnswerRequest struct {
 	PageSize   int32  `form:"page_size" binding:"required,min=5,max=10"`
 	QuestionID int32  `form:"question_id" binding:"required,min=1"`
 	Search     string `form:"search"`
+	UserId     int32  `form:"user_id,default=0"`
 }
 
 func (server *Server) ListAnswers(ctx *gin.Context) {
@@ -141,17 +142,20 @@ func (server *Server) ListAnswers(ctx *gin.Context) {
 		return
 	}
 
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	search := req.Search
 
 	if len(req.Search) > 0 {
 		search = "%" + search + "%"
 	}
+
 	arg := db.GetAnswersByQuestionIDParams{
 		QuestionID: req.QuestionID,
-		UserID:     int32(authPayload.ID),
-		Limit:      req.PageSize,
-		Offset:     (req.PageId - 1) * req.PageSize,
+		UserID: sql.NullInt32{
+			Int32: req.UserId,
+			Valid: req.UserId != 0,
+		},
+		Limit:  req.PageSize,
+		Offset: (req.PageId - 1) * req.PageSize,
 		Content: sql.NullString{
 			String: search,
 			Valid:  len(req.Search) > 0,

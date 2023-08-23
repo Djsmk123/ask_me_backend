@@ -10,12 +10,13 @@ SELECT * FROM "Answer" WHERE id = $1 LIMIT 1 For No Key Update;
 -- name: GetAnswersByQuestionID :many
 SELECT *
 FROM "Answer"
-WHERE "user_id" = $1
+WHERE "question_id" = $1
 AND ("content" ILike sqlc.narg('content') OR sqlc.narg('content') IS NULL)
-And "question_id" = $2
+AND ("user_id"=sqlc.narg('user_id') OR sqlc.narg('user_id') IS NULL)
+
 ORDER BY "created_at" DESC
-LIMIT $3
-OFFSET $4;
+LIMIT $2
+OFFSET $3;
 
 
 -- name: UpdateAnswersByQuestionID :one

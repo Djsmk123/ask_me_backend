@@ -112,29 +112,30 @@ func (q *Queries) GetAnswerForUpdate(ctx context.Context, id int32) (Answer, err
 const getAnswersByQuestionID = `-- name: GetAnswersByQuestionID :many
 SELECT id, user_id, question_id, content, created_at, updated_at
 FROM "Answer"
-WHERE "user_id" = $1
-AND ("content" ILike $5 OR $5 IS NULL)
-And "question_id" = $2
+WHERE "question_id" = $1
+AND ("content" ILike $4 OR $4 IS NULL)
+AND ("user_id"=$5 OR $5 IS NULL)
+
 ORDER BY "created_at" DESC
-LIMIT $3
-OFFSET $4
+LIMIT $2
+OFFSET $3
 `
 
 type GetAnswersByQuestionIDParams struct {
-	UserID     int32          `json:"user_id"`
 	QuestionID int32          `json:"question_id"`
 	Limit      int32          `json:"limit"`
 	Offset     int32          `json:"offset"`
 	Content    sql.NullString `json:"content"`
+	UserID     sql.NullInt32  `json:"user_id"`
 }
 
 func (q *Queries) GetAnswersByQuestionID(ctx context.Context, arg GetAnswersByQuestionIDParams) ([]Answer, error) {
 	rows, err := q.db.QueryContext(ctx, getAnswersByQuestionID,
-		arg.UserID,
 		arg.QuestionID,
 		arg.Limit,
 		arg.Offset,
 		arg.Content,
+		arg.UserID,
 	)
 	if err != nil {
 		return nil, err

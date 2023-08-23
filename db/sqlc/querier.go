@@ -18,6 +18,8 @@ type Querier interface {
 	DeleteAnswerByQuestionId(ctx context.Context, questionID int32) error
 	DeleteAnswerByUserId(ctx context.Context, userID int32) error
 	DeleteFcmToken(ctx context.Context, id int32) (FcmToken, error)
+	DeleteFcmTokenByUserId(ctx context.Context, userID int32) ([]FcmToken, error)
+	DeleteJWTokenByUserId(ctx context.Context, userID int32) ([]Token, error)
 	DeleteJwtToken(ctx context.Context, id int32) (Token, error)
 	DeleteQuestionByUserId(ctx context.Context, userID int32) error
 	DeleteUserById(ctx context.Context, id int32) (User, error)

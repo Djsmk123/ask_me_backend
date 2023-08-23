@@ -137,6 +137,7 @@ type ListQuestionRequest struct {
 	PageId   int32  `form:"page_id" binding:"required,min=1"`
 	PageSize int32  `form:"page_size" binding:"required,min=5,max=10"`
 	Search   string `form:"search"`
+	UserId   int32  `form:"user_id,default=0"`
 }
 
 func (server *Server) ListQuestion(ctx *gin.Context) {
@@ -150,9 +151,12 @@ func (server *Server) ListQuestion(ctx *gin.Context) {
 	if len(search) > 0 {
 		search = "%" + search + "%"
 	}
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+
 	arg := db.GetQuestionsByUserIDParams{
-		UserID: int32(authPayload.ID),
+		UserID: sql.NullInt32{
+			Int32: req.UserId,
+			Valid: req.UserId != 0,
+		},
 		Limit:  req.PageSize,
 		Offset: (req.PageId - 1) * req.PageSize,
 		Content: sql.NullString{

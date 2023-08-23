@@ -79,25 +79,25 @@ func (q *Queries) GetQuestionForUpdate(ctx context.Context, id int32) (Question,
 const getQuestionsByUserID = `-- name: GetQuestionsByUserID :many
 SELECT id, user_id, content, created_at, updated_at
 FROM "Question"
-WHERE "user_id" = $1
+WHERE  ("user_id"=$3 OR $3 IS NULL)
 AND ("content" ILike $4 OR $4 IS NULL)
 ORDER BY "created_at" DESC
-LIMIT $2
-OFFSET $3
+LIMIT $1
+OFFSET $2
 `
 
 type GetQuestionsByUserIDParams struct {
-	UserID  int32          `json:"user_id"`
 	Limit   int32          `json:"limit"`
 	Offset  int32          `json:"offset"`
+	UserID  sql.NullInt32  `json:"user_id"`
 	Content sql.NullString `json:"content"`
 }
 
 func (q *Queries) GetQuestionsByUserID(ctx context.Context, arg GetQuestionsByUserIDParams) ([]Question, error) {
 	rows, err := q.db.QueryContext(ctx, getQuestionsByUserID,
-		arg.UserID,
 		arg.Limit,
 		arg.Offset,
+		arg.UserID,
 		arg.Content,
 	)
 	if err != nil {
