@@ -34,7 +34,7 @@ func (server *Server) CreateQuestion(ctx *gin.Context) {
 		Content: req.Question,
 	}
 
-	question, err := server.store.CreateQuestion(ctx, arg)
+	question, err := server.database.CreateQuestion(ctx, arg)
 
 	if err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
@@ -58,14 +58,14 @@ func (server *Server) DeleteQuestionById(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	err := server.store.DeleteAnswerByQuestionId(ctx, int32(req.ID))
+	err := server.database.DeleteAnswerByQuestionId(ctx, int32(req.ID))
 
 	if err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
-	question, err := server.store.QuestionDelete(ctx, int32(req.ID))
+	question, err := server.database.QuestionDelete(ctx, int32(req.ID))
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -94,7 +94,7 @@ func (server *Server) UpdateQuestionById(ctx *gin.Context) {
 		Content: req.Question,
 		UserID:  int32(userId),
 	}
-	question, err := server.store.UpdateQuestionById(ctx, arg)
+	question, err := server.database.UpdateQuestionById(ctx, arg)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errQuestionNotExist, nil)
@@ -119,7 +119,7 @@ func (server *Server) GetQuestionByID(ctx *gin.Context) {
 		return
 	}
 
-	question, err := server.store.GetQuestionByID(ctx, int32(req.ID))
+	question, err := server.database.GetQuestionByID(ctx, int32(req.ID))
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -165,7 +165,7 @@ func (server *Server) ListQuestion(ctx *gin.Context) {
 		},
 	}
 
-	questions, err := server.store.GetQuestionsByUserID(ctx, arg)
+	questions, err := server.database.GetQuestionsByUserID(ctx, arg)
 
 	if err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	errorhandler "github.com/djsmk123/askmeapi/api/error_handler"
 	responsehandler "github.com/djsmk123/askmeapi/api/response_handler"
 	db "github.com/djsmk123/askmeapi/db/sqlc"
 
@@ -21,17 +22,17 @@ const (
 )
 
 // authMiddleware is a Gin middleware that performs token authentication.
-func (server *Server) authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
+func (server *Server) AuthMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authorizationHeader := ctx.GetHeader(authorizationHeaderKey)
 		if len(authorizationHeader) == 0 {
-			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errMissingAuthHeader)
+			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errorhandler.ErrMissingAuthHeader)
 			return
 		}
 		fields := strings.Fields(authorizationHeader)
 
 		if len(fields) != 2 || strings.ToLower(fields[0]) != authorizationTypeBearer {
-			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errInvalidAuthHeader)
+			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errorhandler.ErrInvalidAuthHeader)
 			return
 		}
 		accessToken := fields[1]
@@ -45,7 +46,7 @@ func (server *Server) authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 				responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, err)
 				return
 			}
-			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errVerifiyingAuthHeader)
+			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errorhandler.ErrVerifiyingAuthHeader)
 			return
 		}
 
@@ -56,7 +57,7 @@ func (server *Server) authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 			JwtToken: accessToken,
 		}
 
-		token, err := server.store.GetJwtTokenUserId(ctx, arg)
+		token, err := server.database.GetJwtTokenUserId(ctx, arg)
 		fmt.Println(err)
 
 		if err != nil {
