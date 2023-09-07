@@ -3,12 +3,14 @@ package api
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	responsehandler "github.com/djsmk123/askmeapi/api/response_handler"
+	"github.com/djsmk123/askmeapi/auth"
 	db "github.com/djsmk123/askmeapi/db/sqlc"
 	"github.com/djsmk123/askmeapi/token"
 	"github.com/djsmk123/askmeapi/utils"
@@ -16,35 +18,10 @@ import (
 	"github.com/lib/pq"
 )
 
-type UserResponseType struct {
-	ID                  int32     `json:"id"`
-	Username            string    `json:"username"`
-	Email               string    `json:"email"`
-	CreatedAt           time.Time `json:"created_at"`
-	UpdatedAt           time.Time `json:"updated_at"`
-	PublicProfileImage  string    `json:"public_profile_image"`
-	PrivateProfileImage string    `json:"private_profile_image"`
-}
-type UserResponseTypeWithToken struct {
-	AccessToken string           `json:"token"`
-	User        UserResponseType `json:"user"`
-}
 type CreateNewUserRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
 	FcmToken string `json:"fcm_token"`
-}
-
-func GetUserResponse(user db.User) UserResponseType {
-	return UserResponseType{
-		ID:                  user.ID,
-		Username:            user.Email,
-		Email:               user.Email,
-		CreatedAt:           user.CreatedAt,
-		UpdatedAt:           user.UpdatedAt,
-		PublicProfileImage:  user.PublicProfileImage,
-		PrivateProfileImage: user.PrivateProfileImage,
-	}
 }
 
 type CreateAnoUserRequest struct {
@@ -52,61 +29,20 @@ type CreateAnoUserRequest struct {
 }
 
 func (server *Server) CreateAnonymousUser(ctx *gin.Context) {
-
 	var req CreateAnoUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
+		fmt.Println(err)
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
-	randomUser, err := utils.GenerateRandomUser()
-	if (err) != nil {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, err, nil)
-		return
-	}
-	arg := db.CreateUserParams{
-		Username:            randomUser.Username,
-		Email:               randomUser.Email,
-		PasswordHash:        randomUser.PasswordHash,
-		PublicProfileImage:  randomUser.PublicProfileImage,
-		PrivateProfileImage: randomUser.PrivateProfileImage,
-		Provider:            randomUser.Provider,
-	}
-
-	user, err := server.store.CreateUser(ctx, arg)
-
-	if (err) != nil {
-		UserErrorHandler(ctx, err)
-		return
-	}
+	rsp, err := server.Auth.CreateUserAnonymousUser(req.FcmToken)
 
 	if err != nil {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, int64(err.StatusCode), err.Error, nil)
 		return
 	}
-
-	server.CreateUserObjectForAuth(user, ctx, false, req.FcmToken)
-
-}
-
-func (server *Server) CreateFcmToken(ctx *gin.Context, token string, user db.User, jwtId int) error {
-	if token == "Null" || len(token) <= 0 {
-		return nil
-	}
-	//save token in the database
-
-	arg := db.CreateFcmTokenParams{
-		ID:       int32(jwtId),
-		UserID:   user.ID,
-		FcmToken: token,
-		IsValid:  true,
-	}
-	_, err := server.store.CreateFcmToken(ctx, arg)
-
-	if err != nil {
-		return err
-	}
-	return nil
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, rsp)
 
 }
 
@@ -116,35 +52,14 @@ func (server *Server) CreateUser(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, err, nil)
 		return
 	}
-	hashPassword, err := utils.HashPassword(req.Password)
+
+	rsp, err := server.Auth.CreateUser(req.Email, req.Password, req.FcmToken)
 
 	if err != nil {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJson(ctx, int64(err.StatusCode), err.Error, nil)
 		return
 	}
-	username := utils.RandomUserName(req.Email)
-	if err != nil {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
-		return
-	}
-
-	arg := db.CreateUserParams{
-		Username:            username,
-		PasswordHash:        sql.NullString{String: hashPassword, Valid: true},
-		Email:               req.Email,
-		Provider:            "password",
-		PublicProfileImage:  utils.RandomUserProfileImage(),
-		PrivateProfileImage: utils.RandomUserProfileImage(),
-	}
-
-	user, err := server.store.CreateUser(ctx, arg)
-
-	if (err) != nil {
-		UserErrorHandler(ctx, err)
-		return
-	}
-
-	server.CreateUserObjectForAuth(user, ctx, false, req.FcmToken)
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, rsp)
 
 }
 
@@ -156,80 +71,18 @@ type LoginUserRequest struct {
 
 func (server *Server) LoginUser(ctx *gin.Context) {
 	var req LoginUserRequest
+
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-
-	user, err := server.store.GetUserByEmail(ctx, req.Email)
-	if (err) != nil {
-		UserErrorHandler(ctx, err)
-		return
-	}
-	err = utils.CheckPassword(req.Password, user.PasswordHash.String)
-	if err != nil {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusUnauthorized, errWrongPassword, nil)
-		return
-	}
-
-	server.CreateUserObjectForAuth(user, ctx, false, req.FcmToken)
-
-}
-
-func (server *Server) CreateJwtToken(ctx *gin.Context, userId int64, username string) (string, error) {
-	accesstoken, err := server.tokenMaker.CreateToken(userId, username, server.config.AccessTokenDuration)
+	rsp, err := server.Auth.Login(req.Email, req.Password, req.FcmToken)
 
 	if err != nil {
-		return "", err
-	}
-	payload, err := server.tokenMaker.VerifyToken(accesstoken)
-	if err != nil {
-		return "", err
-	}
-	//save token to database
-
-	arg := db.CreateJwtTokenParams{
-		UserID:    int32(userId),
-		JwtToken:  accesstoken,
-		CreatedAt: payload.IssuedAt,
-		ExpiresAt: payload.ExpiredAt,
-	}
-
-	__, err := server.store.CreateJwtToken(ctx, arg)
-
-	if err != nil || __.ExpiresAt.Before(time.Now()) {
-		return "", err
-	}
-	return accesstoken, nil
-
-}
-func (server *Server) CreateUserObjectForAuth(user db.User, ctx *gin.Context, isLoggedIn bool, fcmToken string) {
-
-	if !isLoggedIn {
-		t, err := server.CreateJwtToken(ctx, int64(user.ID), user.Username)
-		if err != nil {
-			responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
-			return
-		}
-		authpayload, err := server.tokenMaker.VerifyToken(t)
-		if err != nil {
-			responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
-			return
-		}
-		rsp := UserResponseTypeWithToken{
-			AccessToken: t,
-			User:        GetUserResponse(user),
-		}
-		err = server.CreateFcmToken(ctx, fcmToken, user, int(authpayload.ID))
-		if err != nil {
-			responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
-			return
-		}
-		responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, rsp)
-
+		responsehandler.ResponseHandlerJson(ctx, int64(err.StatusCode), err.Error, nil)
 		return
 	}
-	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, GetUserResponse(user))
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, rsp)
 
 }
 
@@ -246,7 +99,7 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
-	user, err := server.store.GetUserByEmail(ctx, req.Email)
+	user, err := server.database.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		if err == sql.ErrNoRows || err.Error() == "no rows in result set" {
 			profileImage := req.PrivateProfileImage
@@ -261,14 +114,14 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 				PublicProfileImage:  utils.RandomUserProfileImage(),
 				PrivateProfileImage: profileImage,
 			}
-			user, err := server.store.CreateUser(ctx, arg)
+			user, err := server.database.CreateUser(ctx, arg)
 
 			if err != nil {
 				responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 				return
 			}
+			server.Auth.CreateUserObjectForAuth(user, req.FcmToken)
 
-			server.CreateUserObjectForAuth(user, ctx, false, req.FcmToken)
 			return
 
 		}
@@ -285,32 +138,31 @@ func (server *Server) SocialLogin(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, errors.New("invalid resource request"), nil)
 		return
 	}
-	server.CreateUserObjectForAuth(user, ctx, false, req.FcmToken)
+	server.Auth.CreateUserObjectForAuth(user, req.FcmToken)
 }
 
 func (server *Server) GetUser(ctx *gin.Context) {
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
-	user, err := server.store.GetUserByID(ctx, int32(authPayload.ID))
+	user, err := server.database.GetUserByID(ctx, int32(authPayload.ID))
 
 	if (err) != nil {
 		UserErrorHandler(ctx, err)
 		return
 	}
-	server.CreateUserObjectForAuth(user, ctx, true, "")
-
+	server.Auth.CreateUserObjectWithoutToken(user)
 }
 func (server *Server) DeleteUser(ctx *gin.Context) {
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 
 	//delete question where user_id =id
-	server.store.DeleteAnswerByUserId(ctx, int32(authPayload.ID))
+	server.database.DeleteAnswerByUserId(ctx, int32(authPayload.ID))
 
-	server.store.DeleteQuestionByUserId(ctx, int32(authPayload.ID))
+	server.database.DeleteQuestionByUserId(ctx, int32(authPayload.ID))
 
-	server.store.DeleteFcmTokenByUserId(ctx, int32(authPayload.ID))
-	server.store.DeleteJWTokenByUserId(ctx, int32(authPayload.ID))
+	server.database.DeleteFcmTokenByUserId(ctx, int32(authPayload.ID))
+	server.database.DeleteJWTokenByUserId(ctx, int32(authPayload.ID))
 
-	_, err := server.store.DeleteUserById(ctx, int32(authPayload.ID))
+	_, err := server.database.DeleteUserById(ctx, int32(authPayload.ID))
 	if (err) != nil {
 		UserErrorHandler(ctx, err)
 		return
@@ -322,13 +174,13 @@ func (server *Server) DeleteUser(ctx *gin.Context) {
 
 func UserErrorHandler(ctx *gin.Context, err error) {
 	if err == sql.ErrNoRows {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, errUserNotExist, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusNotFound, auth.ErrUserNotExist, nil)
 		return
 	}
 	if pqErr, ok := err.(*pq.Error); ok {
 		switch pqErr.Code.Name() {
 		case "unique_violation", "unique_key_voilation":
-			responsehandler.ResponseHandlerJson(ctx, http.StatusForbidden, errUserAlreadyExist, nil)
+			responsehandler.ResponseHandlerJson(ctx, http.StatusForbidden, auth.ErrUserAlreadyExist, nil)
 			return
 		}
 	}
@@ -349,13 +201,13 @@ func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 	isAnonymous := utils.CheckIsAnonymousUser(req.Email)
 
 	if isAnonymous {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, errAnonymousUserFound, nil)
+		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, auth.ErrAnonymousUserFound, nil)
 		return
 	}
 
 	//find user by email to check if user exists or not
 
-	user, err := server.store.GetUserByEmail(ctx, req.Email)
+	user, err := server.database.GetUserByEmail(ctx, req.Email)
 
 	if (err) != nil {
 		UserErrorHandler(ctx, err)
@@ -366,19 +218,19 @@ func (server *Server) PasswordResetRequest(ctx *gin.Context) {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusBadRequest, errors.New("invalid resource request"), nil)
 	}
 
-	resetToken, err := server.passwordReset.CreateToken(int64(user.ID), 10*time.Minute)
+	resetToken, err := server.PasswordReset.CreateToken(int64(user.ID), 10*time.Minute)
 	if err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 	encryptedUrl := url.QueryEscape(resetToken)
 	emailData := utils.EmailData{
-		URL:       server.config.BaseUrl + "reset-password-page?token=" + encryptedUrl,
+		URL:       server.Config.BaseUrl + "reset-password-page?token=" + encryptedUrl,
 		FirstName: user.Email,
 		Subject:   "Your password reset token (valid for 10min)",
 	}
 
-	err = utils.SendEmail(user.Email, &server.config, &emailData, "resetPassword.html")
+	err = utils.SendEmail(user.Email, &server.Config, &emailData, "resetPassword.html")
 	if err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
@@ -407,7 +259,7 @@ func (server *Server) ResetPaswordVerify(ctx *gin.Context) {
 		return
 	}
 
-	payload, err := server.passwordReset.VerifyToken(token)
+	payload, err := server.PasswordReset.VerifyToken(token)
 	if err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
@@ -423,7 +275,7 @@ func (server *Server) ResetPaswordVerify(ctx *gin.Context) {
 		return
 	}
 
-	user, err := server.store.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+	user, err := server.database.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
 		ID: int32(payload.Id),
 		PasswordHash: sql.NullString{
 			String: newPasswordHash,
@@ -449,7 +301,7 @@ func (server *Server) LogoutUser(ctx *gin.Context) {
 		JwtToken: payload,
 		UserID:   int32(authPayload.ID),
 	}
-	_, err := server.store.UpdateJwtToken(ctx, arg)
+	_, err := server.database.UpdateJwtToken(ctx, arg)
 
 	if err != nil {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
@@ -460,13 +312,13 @@ func (server *Server) LogoutUser(ctx *gin.Context) {
 		ID:      int32(authPayload.ID),
 		IsValid: false,
 	}
-	_, err = server.store.UpdateFcmToken(ctx, arg1)
+	_, err = server.database.UpdateFcmToken(ctx, arg1)
 
 	if err != nil && err != sql.ErrNoRows {
 		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}
 
-	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, err, "Successfully log-out")
+	responsehandler.ResponseHandlerJson(ctx, http.StatusOK, nil, "Successfully log-out")
 
 }

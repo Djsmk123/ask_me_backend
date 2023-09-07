@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"time"
 
 	db "github.com/djsmk123/askmeapi/db/sqlc"
 )
@@ -27,9 +28,14 @@ func GenerateRandomUser() (*db.CreateUserParams, error) {
 
 var domains = []string{"askmehelp.com", "askme1.com", "asmke.in", "askme.live", "tempaskme.net"}
 
-func RandomEmail() string {
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
+func RandomEmail() string {
 	randomDomain := domains[rand.Intn(len(domains))]
+
+	// Generate a random username with a random length between 6 and 12 characters
 	usernameLength := rand.Intn(7) + 6
 	username := make([]byte, usernameLength)
 	for i := 0; i < usernameLength; i++ {
