@@ -9,11 +9,7 @@ import (
 
 func (server *Server) setupRouter() {
 	router := gin.Default()
-	//add a middleware to set content-type header for all requests
-	router.Use(func(c *gin.Context) {
-		c.Header("Content-Type", "application/json")
-		c.Next()
-	})
+
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
@@ -59,6 +55,10 @@ func (server *Server) setupRouter() {
 	authRoutesV1.GET("/delete-answer/:id", server.DeleteAnswerById)
 	authRoutesV1.GET("/answers", server.ListAnswers)
 	authRoutesV1.GET("/answer/:id", server.GetAnswerByID)
+	v1.Use(func(c *gin.Context) {
+		c.Header("Content-Type", "application/json")
+		c.Next()
+	})
 
 	server.Router = router
 }

@@ -12,7 +12,7 @@ type Response struct{}
 func JsonBinder(ctx *gin.Context, req interface{}) interface{} {
 	var res *Response
 	if err := ctx.ShouldBindJSON(&res); err != nil {
-		responsehandler.ResponseHandlerJson(ctx, http.StatusInternalServerError, err, nil)
+		responsehandler.ResponseHandlerJSON(ctx, http.StatusInternalServerError, err, nil)
 		return nil
 	}
 	return res
