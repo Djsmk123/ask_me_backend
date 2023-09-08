@@ -34,7 +34,7 @@ func NewServer(config utils.Config, store db.DBExec) (*Server, error) {
 		database:      store,
 		TokenMaker:    tokenMaker,
 		PasswordReset: passwordResetMaker,
-		Auth:          auth.NewAuthUtils(config, store, tokenMaker, context.Background()),
+		Auth:          auth.NewAuthUtils(config, store, tokenMaker, context.Background(), passwordResetMaker),
 	}
 
 	server.setupRouter()

@@ -4,51 +4,46 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type APIRESPONSE struct {
+type APIResponse struct {
 	StatusCode int64       `json:"status_code"`
 	Message    string      `json:"message"`
-	Data       SuccessData `json:"data"`
+	Data       interface{} `json:"data"`
 	Success    bool        `json:"success"`
 }
 
-type SuccessData interface{}
-
 func ResponseHandlerAbort(ctx *gin.Context, code int64, err error) {
-	response := APIRESPONSE{
+	response := APIResponse{
 		StatusCode: code,
 		Message:    err.Error(),
 		Data:       nil,
 		Success:    false,
 	}
 	ctx.AbortWithStatusJSON(int(code), response)
-
 }
-func ResponseHandlerJson(ctx *gin.Context, code int64, err error, data SuccessData) {
-	var response APIRESPONSE
+
+func ResponseHandlerJSON(ctx *gin.Context, code int64, err error, data interface{}) {
+	response := APIResponse{
+		StatusCode: code,
+		Data:       data,
+	}
 
 	if err != nil {
-		var response SuccessData = "invalid request"
-		e := err.Error()
+		response.Success = false
+		message := err.Error()
+
 		if data != nil {
-			response = data
+			response.Data = data
 		}
-		if e == "dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it." {
-			e = "Connection establishment failed"
+
+		if message == "dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it." {
+			message = "Connection establishment failed"
 		}
-		response = APIRESPONSE{
-			StatusCode: code,
-			Message:    e,
-			Data:       response,
-			Success:    false,
-		}
-		ctx.JSON(int(code), response)
-		return
+
+		response.Message = message
+	} else {
+		response.Success = true
+		response.Message = "Request has been served successfully"
 	}
-	response = APIRESPONSE{
-		StatusCode: code,
-		Message:    "Request has been served successfully",
-		Data:       data,
-		Success:    true,
-	}
+
 	ctx.JSON(int(code), response)
 }

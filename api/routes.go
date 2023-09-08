@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -9,19 +10,22 @@ import (
 
 func (server *Server) setupRouter() {
 	router := gin.Default()
-	//add a middleware to set content-type header for all requests
-	router.Use(func(c *gin.Context) {
-		c.Header("Content-Type", "application/json")
-		c.Next()
-	})
+
+	// CORS Configuration
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	router.Use(cors.New(corsConfig))
-	if server.Config.GINMODE == gin.ReleaseMode {
+
+	// Set Gin mode based on configuration
+	if strings.ToLower(server.Config.GINMODE) == gin.ReleaseMode {
 		gin.SetMode(gin.ReleaseMode)
 	}
+
+	// Load HTML templates
 	router.LoadHTMLGlob("static/*.html")
+
+	// Define routes
 	router.GET("/", func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "index.html", nil)
 	})
@@ -31,17 +35,18 @@ func (server *Server) setupRouter() {
 	})
 
 	router.PATCH("/resetpassword", server.ResetPaswordVerify)
-	router.UseRawPath = true
-	router.UnescapePathValues = false
+
+	// API Version 1 Routes
 	v1 := router.Group("/api/v1")
 
+	// Public Routes
 	v1.POST("/create-user", server.CreateUser)
-
 	v1.POST("/create-ano-user", server.CreateAnonymousUser)
 	v1.POST("/login-user", server.LoginUser)
 	v1.POST("/social-login", server.SocialLogin)
 	v1.POST("/request-password-reset", server.PasswordResetRequest)
 
+	// Authenticated Routes (requires token)
 	authRoutesV1 := v1.Use(server.AuthMiddleware(server.TokenMaker))
 
 	authRoutesV1.GET("/delete-user/", server.DeleteUser)
@@ -59,6 +64,12 @@ func (server *Server) setupRouter() {
 	authRoutesV1.GET("/delete-answer/:id", server.DeleteAnswerById)
 	authRoutesV1.GET("/answers", server.ListAnswers)
 	authRoutesV1.GET("/answer/:id", server.GetAnswerByID)
+
+	// Set default Content-Type header for all API responses
+	v1.Use(func(c *gin.Context) {
+		c.Header("Content-Type", "application/json")
+		c.Next()
+	})
 
 	server.Router = router
 }
