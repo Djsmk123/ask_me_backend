@@ -23,7 +23,10 @@ func (a *AuthUtils) Login(email string, password string, fcmToken string) (*User
 	}
 	err = utils.CheckPassword(password, user.PasswordHash.String)
 	if err != nil {
-		return nil, UserErrorHandler(err)
+		return nil, &errorhandler.ErrorHandlerApi{
+			StatusCode: http.StatusForbidden,
+			Error:      ErrWrongPassword,
+		}
 	}
 
 	rsp, e := a.CreateUserObjectForAuth(user, fcmToken)
