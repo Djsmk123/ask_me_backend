@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -29,49 +28,48 @@ func (server *Server) AuthMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errorhandler.ErrMissingAuthHeader)
 			return
 		}
-		fields := strings.Fields(authorizationHeader)
 
+		fields := strings.Fields(authorizationHeader)
 		if len(fields) != 2 || strings.ToLower(fields[0]) != authorizationTypeBearer {
 			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errorhandler.ErrInvalidAuthHeader)
 			return
 		}
+
 		accessToken := fields[1]
-		errExpiredToken := token.ErrExpiredToken
-		errInvalidToken := token.ErrInvalidToken
 
 		payload, err := tokenMaker.VerifyToken(accessToken)
 		if err != nil {
 			switch err {
-			case errExpiredToken, errInvalidToken:
+			case token.ErrExpiredToken, token.ErrInvalidToken:
 				responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, err)
-				return
+			default:
+				responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errorhandler.ErrVerifiyingAuthHeader)
 			}
-			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errorhandler.ErrVerifiyingAuthHeader)
 			return
 		}
 
-		//check token is valid by comparing from token database
-
+		// Check if the token exists in the database
 		arg := db.GetJwtTokenUserIdParams{
 			UserID:   int32(payload.ID),
 			JwtToken: accessToken,
 		}
 
-		token, err := server.database.GetJwtTokenUserId(ctx, arg)
-		fmt.Println(err)
-
+		authtoken, err := server.database.GetJwtTokenUserId(ctx, arg)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errInvalidToken)
-				return
+				responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, token.ErrInvalidToken)
+			} else {
+				responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, err)
 			}
-			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, err)
 			return
 		}
-		if token.ExpiresAt.Before(time.Now()) {
-			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errExpiredToken)
+
+		// Check token expiration
+		if authtoken.ExpiresAt.Before(time.Now()) {
+			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, token.ErrExpiredToken)
 			return
 		}
+
 		ctx.Set(authorizationPayloadKey, payload)
 		ctx.Next()
 	}
