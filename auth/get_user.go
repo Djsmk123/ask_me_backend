@@ -9,6 +9,5 @@ func (a *AuthUtils) GetUser(userId int32) (*UserResponseType, *errorhandler.Erro
 		return nil, UserErrorHandler(err)
 	}
 	rps := a.CreateUserObjectWithoutToken(user)
-
 	return &rps, nil
 }

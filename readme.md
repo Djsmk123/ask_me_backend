@@ -63,7 +63,7 @@ if request required token than `Authentication Required : true` in API documenta
 
 **Description**: Create a new user.
 
-**Request Body**:
+**Request Body **:
 
 ```
 
