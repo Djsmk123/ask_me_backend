@@ -202,7 +202,7 @@ if request required token than `Authentication Required : true` in API documenta
   * `search` : Query search
 
 
-### Answer Management
+## Answer Management
 
 ### Create Answer
 
@@ -213,6 +213,7 @@ if request required token than `Authentication Required : true` in API documenta
 **Authentication Required**: YES
 
 **Request Body** : 
+
 ```
 {
   "content": "Answer content",
@@ -220,6 +221,7 @@ if request required token than `Authentication Required : true` in API documenta
 }
 
 ```
+
 ### Update Answer
 
 **Endpoint**: `POST /api/v1/update-answer`
