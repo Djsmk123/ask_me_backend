@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	authorizationHeaderKey  = "autherization" // Corrected the header name
+	authorizationHeaderKey  = "authorization" // Corrected the header name
 	authorizationTypeBearer = "bearer"        // Corrected the token type
 	authorizationPayloadKey = "autherization_payload"
 )
@@ -23,6 +23,7 @@ const (
 // authMiddleware is a Gin middleware that performs token authentication.
 func (server *Server) AuthMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+
 		authorizationHeader := ctx.GetHeader(authorizationHeaderKey)
 		if len(authorizationHeader) == 0 {
 			responsehandler.ResponseHandlerAbort(ctx, http.StatusUnauthorized, errorhandler.ErrMissingAuthHeader)
